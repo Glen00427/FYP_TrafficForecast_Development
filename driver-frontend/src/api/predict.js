@@ -1,55 +1,69 @@
-// src/api/predict.js
-/**
- * Predict routes given inputs.
- * Replace the internals with a real fetch to your ML service.
- * Suggested real API shape:
- * POST /predict { from, to, weather, daypart, dateISO, features... }
- * -> { best: {...}, worst: {...}, note, version }
- */
-export async function predictRoutes({
-  from,
-  to,
-  weather = "clear",
-  daypart = "peak",
-}) {
-  // --- MOCK LOGIC (replace with real fetch) ---
-  // A tiny heuristic + randomness to simulate different returns:
-  const seed = (from + to + weather + daypart).length;
-  const bestFirst = seed % 2 === 0;
-
-  const options = [
-    { id: "ECP", name: "ECP expressway" },
-    { id: "PIE", name: "PIE expressway" },
-    { id: "CTE", name: "CTE via city" },
-  ];
-
-  const best = bestFirst ? options[0] : options[1];
-  const worst = bestFirst ? options[2] : options[0];
-
-  const bestConfidence = 0.76 + (seed % 10) / 100; // 0.76 - 0.85
-  const worstConfidence = 1 - bestConfidence - 0.05; // just to show a number
-
-  // Return a shape your UI can render.
-  // We only return labels/metadata; the map line will be fetched from OSRM when the user clicks.
-  return {
-    best: {
-      id: best.id,
-      label: "Predicted Best",
-      name: best.name,
-      confidence: Number(bestConfidence.toFixed(2)),
-      // You can attach more features here (ETA, expected congestion, etc.)
-      from,
-      to,
-    },
-    worst: {
-      id: worst.id,
-      label: "Predicted Worst",
-      name: worst.name,
-      confidence: Number(worstConfidence.toFixed(2)),
-      from,
-      to,
-    },
-    note: "Suggestions are prediction-based and may differ from real-time traffic.",
-    version: "mock-0.1",
-  };
+// fyp-tfbdm/src/api/predict.js
+export async function predictRoutes({ from, to, departTime }) {
+  const API_URL = process.env.REACT_APP_ML_API_URL || 'http://localhost:5000';
+  
+  try {
+    const response = await fetch(`${API_URL}/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to,
+        departTime: departTime || new Date().toISOString(),
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Prediction failed');
+    }
+    
+    const data = await response.json();
+    
+    // Transform to UI format
+    return {
+      best: {
+        id: data.best_route_id,
+        name: data.best_route_name,
+        label: "Predicted Best",
+        confidence: data.best_confidence,
+        duration: `${data.best_duration_min} min`,
+        distance: `${data.best_distance_km} km`,
+        congestionProb: data.best_congestion_prob,
+      },
+      worst: {
+        id: data.worst_route_id,
+        name: data.worst_route_name,
+        label: "Predicted Worst",
+        confidence: data.worst_confidence,
+        duration: `${data.worst_duration_min} min`,
+        distance: `${data.worst_distance_km} km`,
+        congestionProb: data.worst_congestion_prob,
+      },
+      note: "AI-powered predictions based on real-time traffic and historical patterns",
+    };
+  } catch (error) {
+    console.error('Prediction error:', error);
+    // Return fallback/demo data
+    return {
+      best: { 
+        id: 'fallback', 
+        name: 'Route 1', 
+        label: 'Best (fallback)', 
+        duration: '25 min', 
+        distance: '12 km', 
+        confidence: 0.7,
+        congestionProb: 0.35  // ADDED THIS
+      },
+      worst: { 
+        id: 'fallback2', 
+        name: 'Route 2', 
+        label: 'Alternative', 
+        duration: '32 min', 
+        distance: '15 km', 
+        confidence: 0.6,
+        congestionProb: 0.68  // ADDED THIS
+      },
+      note: 'Using fallback routes (backend offline)',
+    };
+  }
 }
