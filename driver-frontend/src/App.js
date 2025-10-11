@@ -20,6 +20,7 @@ import { saveIncidentReport } from "./components/saveIncident";
 import NotificationIcon from "./components/NotificationIcon";
 import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
+import { predictRoutes } from './api/predict';
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -338,9 +339,30 @@ export default function App() {
 
         <RoutePreviewSheet
           isGuest={!user}
-          onSubmit={(from, to, options) => {
+          onSubmit={async (from, to, options) => {
             console.log("Preview requested:", { from, to, options });
-          }}
+          // ADD THIS PREDICTION CALL
+      try {
+        const result = await predictRoutes({ 
+          from, 
+          to, 
+          departTime: options?.departAt 
+        });
+        
+        console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2)); // ADD THIS
+        console.log('🔍 Best congestionProb:', result.best.congestionProb); // AND THIS
+        
+        setPredictions(result);
+        console.log('ML Predictions received:', result);
+        
+        // Show results to user
+        alert(`Best route: ${result.best.name}\nCongestion: ${Math.round(result.best.congestionProb * 100)}%`);
+        
+      } catch (error) {
+        console.error('Prediction failed:', error);
+        alert('Could not get predictions. Check console.');
+      }
+    }}
         />
       </section>
 
