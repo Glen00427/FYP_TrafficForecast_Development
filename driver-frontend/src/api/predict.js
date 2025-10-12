@@ -1,8 +1,11 @@
-// fyp-tfbdm/src/api/predict.js
+// driver-frontend/src/api/predict.js
 export async function predictRoutes({ from, to, departTime }) {
   const API_URL = process.env.REACT_APP_ML_API_URL || 'http://localhost:5000';
   
   try {
+    console.log('🔍 Calling ML API:', API_URL);
+    console.log('📍 From:', from, 'To:', to);
+    
     const response = await fetch(`${API_URL}/predict`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -13,57 +16,47 @@ export async function predictRoutes({ from, to, departTime }) {
       }),
     });
     
+    console.log('📡 Response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error('Prediction failed');
+      const errorData = await response.json();
+      console.error('❌ API Error:', errorData);
+      throw new Error(errorData.error || 'Prediction failed');
     }
     
     const data = await response.json();
+    console.log('✅ ML Response:', data);
     
-    // Transform to UI format
     return {
       best: {
-        id: data.best_route_id,
-        name: data.best_route_name,
-        label: "Predicted Best",
-        confidence: data.best_confidence,
-        duration: `${data.best_duration_min} min`,
-        distance: `${data.best_distance_km} km`,
-        congestionProb: data.best_congestion_prob,
+        id: data.route_id,
+        name: data.route_name,
+        label: data.status === 'congested' ? '🔴 High Congestion' : '🟢 Clear Traffic',
+        confidence: data.confidence,
+        duration: `${data.duration_min} min`,
+        distance: `${data.distance_km} km`,
+        congestionProb: data.congestion_prob,
+        status: data.status,
+        linkIdsCount: data.link_ids_count
       },
-      worst: {
-        id: data.worst_route_id,
-        name: data.worst_route_name,
-        label: "Predicted Worst",
-        confidence: data.worst_confidence,
-        duration: `${data.worst_duration_min} min`,
-        distance: `${data.worst_distance_km} km`,
-        congestionProb: data.worst_congestion_prob,
-      },
-      note: "AI-powered predictions based on real-time traffic and historical patterns",
+      worst: null,
+      note: `Congestion: ${Math.round(data.congestion_prob * 100)}% (${data.status})`,
     };
   } catch (error) {
-    console.error('Prediction error:', error);
-    // Return fallback/demo data
+    console.error('🔥 Prediction error:', error);
     return {
       best: { 
         id: 'fallback', 
-        name: 'Route 1', 
-        label: 'Best (fallback)', 
+        name: `${from} → ${to}`, 
+        label: '⚠️ API Offline', 
         duration: '25 min', 
         distance: '12 km', 
         confidence: 0.7,
-        congestionProb: 0.35  // ADDED THIS
+        congestionProb: 0.35,
+        status: 'clear'
       },
-      worst: { 
-        id: 'fallback2', 
-        name: 'Route 2', 
-        label: 'Alternative', 
-        duration: '32 min', 
-        distance: '15 km', 
-        confidence: 0.6,
-        congestionProb: 0.68  // ADDED THIS
-      },
-      note: 'Using fallback routes (backend offline)',
+      worst: null,
+      note: `Error: ${error.message}`,
     };
   }
 }
