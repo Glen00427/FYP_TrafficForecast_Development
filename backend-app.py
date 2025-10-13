@@ -38,7 +38,7 @@ except Exception as e:
     ]
 
 # LTA API credentials 
-LTA_ACCOUNT_KEY = 'RYS6WoFQRNmktb5h2N0u5w=='
+LTA_ACCOUNT_KEY = '9/ZLa/JOSf2zKSPsVJ3dUA=='
 
 def get_lta_traffic_speedbands():
 
