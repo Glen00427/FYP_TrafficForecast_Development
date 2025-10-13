@@ -25,7 +25,6 @@ try:
         print(f"✅ Features: {FEATS}")
     else:
         print(f"⚠️ Model file not found at {MODEL_PATH}")
-        # Fallback features from your notebook (page 11)
         FEATS = [
             "SpeedKMH_Est", "MinimumSpeed", "MaximumSpeed",
             "dow", "hour", "incident_count", "vms_count", "cctv_count", "ett_mean"
@@ -41,10 +40,10 @@ except Exception as e:
 LTA_ACCOUNT_KEY = '9/ZLa/JOSf2zKSPsVJ3dUA=='
 
 def get_lta_traffic_speedbands():
-
-    # Fetch current traffic speed bands from LTA API.
-    # Returns DataFrame with 'tbl' structure from notebook.
-    
+    """
+    Fetch current traffic speed bands from LTA API.
+    Returns DataFrame with 'tbl' structure from notebook.
+    """
     url = 'https://datamall2.mytransport.sg/ltaodataservice/v4/TrafficSpeedBands'
     headers = {'AccountKey': LTA_ACCOUNT_KEY, 'accept': 'application/json'}
     
@@ -61,16 +60,19 @@ def get_lta_traffic_speedbands():
         # Convert to DataFrame 
         df = pd.DataFrame(data)
         
-        # Numeric conversions 
-        num_cols = ["SpeedBand", "MinimumSpeed", "MaximumSpeed", "SpeedKMH_Est"]
+        # Numeric conversions - only convert columns that exist
+        num_cols = ["SpeedBand", "MinimumSpeed", "MaximumSpeed"]
         for c in num_cols:
             if c in df.columns:
                 df[c] = pd.to_numeric(df[c], errors="coerce")
         
-        # Fill SpeedKMH_Est if missing 
-        if 'SpeedKMH_Est' in df.columns and 'MinimumSpeed' in df.columns and 'MaximumSpeed' in df.columns:
-            mask_est = df["SpeedKMH_Est"].isna() & df["MinimumSpeed"].notna() & df["MaximumSpeed"].notna()
-            df.loc[mask_est, "SpeedKMH_Est"] = (df.loc[mask_est, "MinimumSpeed"] + df.loc[mask_est, "MaximumSpeed"]) / 2
+        # CREATE SpeedKMH_Est from MinimumSpeed and MaximumSpeed
+        # LTA API v4 doesn't provide this field, so we calculate it
+        if 'MinimumSpeed' in df.columns and 'MaximumSpeed' in df.columns:
+            df["SpeedKMH_Est"] = (df["MinimumSpeed"] + df["MaximumSpeed"]) / 2
+        else:
+            print("⚠️ Warning: MinimumSpeed or MaximumSpeed not in LTA response")
+            return pd.DataFrame()
         
         # Add time features 
         now = datetime.now()
@@ -92,12 +94,13 @@ def get_lta_traffic_speedbands():
         
     except Exception as e:
         print(f"Error fetching LTA data: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
 
 
 def get_osrm_route(start_lat, start_lon, end_lat, end_lon):
-    # Get route from OSRM.
-    # Returns route coordinates and metadata.
+    """Get route from OSRM. Returns route coordinates and metadata."""
     try:
         url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
         params = {
@@ -121,9 +124,9 @@ def get_osrm_route(start_lat, start_lon, end_lat, end_lon):
         route = data['routes'][0]
         
         return {
-            'coordinates': route['geometry']['coordinates'],  # [[lon, lat], ...]
-            'distance': route['distance'],  # meters
-            'duration': route['duration']   # seconds
+            'coordinates': route['geometry']['coordinates'],
+            'distance': route['distance'],
+            'duration': route['duration']
         }
         
     except Exception as e:
@@ -133,22 +136,15 @@ def get_osrm_route(start_lat, start_lon, end_lat, end_lon):
 
 def map_route_to_linkids(route_coords, tbl):
     """
-    # Map OSRM route coordinates to LTA LinkIDs.
-    
-    Production version would use spatial matching to:
-    - Use OSMnx to get road names along route
-    - Map road names to LinkIDs using the road_links dictionary
-    
-    MVP version (for bare minimum):
-    - Use available LinkIDs from current traffic data
-    - Sample based on route complexity
+    Map OSRM route coordinates to LTA LinkIDs.
+    MVP version: Sample LinkIDs based on route complexity
     """
     available_links = tbl['LinkID'].unique().tolist()
     
     if not available_links:
         return []
     
-    # Sample based on route length (simple heuristic)
+    # Sample based on route length
     num_segments = min(len(route_coords) // 10, 15)
     num_segments = max(num_segments, 5)
     
@@ -160,8 +156,7 @@ def map_route_to_linkids(route_coords, tbl):
 
 
 def aggregate_route_features(route_linkids, tbl):
-    # Aggregate features for a route given its LinkIDs.
-    
+    """Aggregate features for a route given its LinkIDs."""
     segs = tbl[tbl["LinkID"].isin(route_linkids)]
     
     if segs.empty:
@@ -193,7 +188,6 @@ def parse_coordinates(coord_string):
         lat = float(parts[0])
         lon = float(parts[1])
         
-        # Validate Singapore bounds
         if not (1.0 <= lat <= 1.5 and 103.0 <= lon <= 104.5):
             raise ValueError("Coordinates outside Singapore bounds")
         
@@ -228,14 +222,12 @@ def predict():
     try:
         data = request.json
         
-        # Validate input
         if not data or 'from' not in data or 'to' not in data:
             return jsonify({'error': 'Missing required fields: from, to'}), 400
         
         from_location = data['from']
         to_location = data['to']
         
-        # Parse coordinates
         try:
             start_lat, start_lon = parse_coordinates(from_location)
             end_lat, end_lon = parse_coordinates(to_location)
@@ -252,7 +244,7 @@ def predict():
         
         print(f"🛣️  OSRM route: {osrm_route['distance']/1000:.1f} km, {osrm_route['duration']/60:.0f} min")
         
-        # Get current traffic data as DataFrame 
+        # Get current traffic data
         tbl = get_lta_traffic_speedbands()
         
         if tbl.empty:
@@ -260,13 +252,12 @@ def predict():
         
         print(f"📊 Fetched {len(tbl)} traffic segments from LTA")
         
-        # Map route coordinates to LinkIDs
+        # Map route to LinkIDs
         route_linkids = map_route_to_linkids(osrm_route['coordinates'], tbl)
         
         if not route_linkids or len(route_linkids) == 0:
             return jsonify({'error': 'Could not map route to traffic segments'}), 400
         
-        # Check if model is loaded
         if model is None:
             return jsonify({
                 'error': 'Model not loaded',
@@ -278,7 +269,7 @@ def predict():
                 }
             }), 503
         
-        # Aggregate features using YOUR function 
+        # Aggregate features
         features = aggregate_route_features(route_linkids, tbl)
         
         if features is None:
@@ -286,7 +277,7 @@ def predict():
         
         print(f"📈 Aggregated features: {features}")
         
-        # Convert to DataFrame and predict 
+        # Predict
         X = pd.DataFrame([features])[FEATS]
         proba = model.predict_proba(X)[:, 1][0]
         
@@ -294,13 +285,12 @@ def predict():
         
         print(f"✅ Prediction: {proba:.3f} ({status})")
         
-        # Return response
         return jsonify({
             'route_id': 'main_route',
             'route_name': f"{from_location} → {to_location}",
             'congestion_prob': round(float(proba), 3),
             'status': status,
-            'confidence': 0.835,  # Your validation AUC from page 14
+            'confidence': 0.835,
             'duration_min': round(osrm_route['duration'] / 60),
             'distance_km': round(osrm_route['distance'] / 1000, 1),
             'link_ids_count': len(route_linkids),
@@ -321,26 +311,20 @@ def predict():
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint"""
     return jsonify({
         'status': 'ok',
         'model_loaded': model is not None,
         'model_path': MODEL_PATH,
         'features': FEATS,
-        'lta_api_available': True  # Could add actual check here
+        'lta_api_available': True
     })
 
 
 @app.route('/test', methods=['GET'])
 def test():
-    """
-    Test endpoint using your sample data from page 13.
-    Tests model with known inputs to verify it's working.
-    """
     if model is None:
         return jsonify({'error': 'Model not loaded'}), 503
     
-    # Your test samples from page 13
     samples = pd.DataFrame([
         {
             "SpeedKMH_Est": 28.0,
