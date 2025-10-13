@@ -341,29 +341,39 @@ export default function App() {
         <RoutePreviewSheet
           isGuest={!user}
           onSubmit={async (from, to, options) => {
-            console.log("Preview requested:", { from, to, options });
-          // ADD THIS PREDICTION CALL
-      try {
-        const result = await predictRoutes({ 
-          from, 
-          to, 
-          departTime: options?.departAt 
-        });
-        
-        console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2)); // ADD THIS
-        console.log('🔍 Best congestionProb:', result.best.congestionProb); // AND THIS
-        
-        setPredictions(result);
-        console.log('ML Predictions received:', result);
-        
-        // Show results to user
-        alert(`Best route: ${result.best.name}\nCongestion: ${Math.round(result.best.congestionProb * 100)}%`);
-        
-      } catch (error) {
-        console.error('Prediction failed:', error);
-        alert('Could not get predictions. Check console.');
-      }
-    }}
+  console.log("Preview requested:", { from, to, options });
+  
+  try {
+    const result = await predictRoutes({ 
+      from, 
+      to, 
+      departTime: options?.departAt 
+    });
+    
+    console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2));
+    console.log('🔍 Best congestionProb:', result.best.congestionProb);
+    console.log('ML Predictions received:', result);
+    
+    // Show detailed results to user
+    const congestionPercent = Math.round(result.best.congestionProb * 100);
+    const statusEmoji = result.best.status === 'congested' ? '🔴' : '🟢';
+    
+    alert(
+      `${statusEmoji} Traffic Prediction\n\n` +
+      `Route: ${result.best.name}\n` +
+      `Status: ${result.best.status.toUpperCase()}\n` +
+      `Congestion: ${congestionPercent}%\n` +
+      `Duration: ${result.best.duration}\n` +
+      `Distance: ${result.best.distance}\n` +
+      `Confidence: ${Math.round(result.best.confidence * 100)}%\n\n` +
+      `${result.note}`
+    );
+    
+  } catch (error) {
+    console.error('Prediction failed:', error);
+    alert('Could not get predictions. Check console.');
+  }
+}}
         />
       </section>
 
