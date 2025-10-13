@@ -27,7 +27,7 @@ export default function App() {
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [predictions, setPredictions] = useState(null);
+  // const [predictions, setPredictions] = useState(null);
 
   // auth & gate
   const [user, setUser] = useState(null);
