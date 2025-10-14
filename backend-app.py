@@ -9,7 +9,15 @@ import requests
 import os
 
 app = Flask(__name__)
-CORS(app)
+# CORS(app) commented as this has to be modified
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://curly-space-system-g4xw75qxrxq4fjj-3000.app.github.dev",
+            "http://localhost:3000"
+        ]
+    }
+})
 
 # Load model 
 MODEL_PATH = 'congestion_model.pkl'
@@ -380,4 +388,5 @@ if __name__ == '__main__':
     print(f"Model loaded: {model is not None}")
     print(f"Features: {FEATS}")
     print("="*60)
+
     app.run(host='0.0.0.0', port=5000, debug=True)
