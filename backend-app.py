@@ -9,7 +9,6 @@ import requests
 import os
 
 app = Flask(__name__)
-# CORS(app) commented as this has to be modified
 CORS(app, resources={
     r"/*": {
         "origins": [
@@ -47,11 +46,33 @@ except Exception as e:
 # LTA API credentials 
 LTA_ACCOUNT_KEY = '9/ZLa/JOSf2zKSPsVJ3dUA=='
 
+
+def geocode_address(address):
+    """Convert address string to coordinates using Nominatim (free, no API key)."""
+    try:
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            'q': f"{address}, Singapore",
+            'format': 'json',
+            'limit': 1
+        }
+        headers = {'User-Agent': 'TrafficPredictionApp/1.0'}
+        
+        response = requests.get(url, params=params, headers=headers, timeout=5)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data:
+                return float(data[0]['lat']), float(data[0]['lon'])
+        
+        return None, None
+    except Exception as e:
+        print(f"❌ Geocoding error: {e}")
+        return None, None
+
+
 def get_lta_traffic_speedbands():
-    """
-    Fetch current traffic speed bands from LTA API.
-    Returns DataFrame with 'tbl' structure from notebook.
-    """
+    """Fetch current traffic speed bands from LTA API."""
     url = 'https://datamall2.mytransport.sg/ltaodataservice/v4/TrafficSpeedBands'
     headers = {'AccountKey': LTA_ACCOUNT_KEY, 'accept': 'application/json'}
     
@@ -65,35 +86,28 @@ def get_lta_traffic_speedbands():
         if not data:
             return pd.DataFrame()
         
-        # Convert to DataFrame 
         df = pd.DataFrame(data)
         
-        # Numeric conversions - only convert columns that exist
         num_cols = ["SpeedBand", "MinimumSpeed", "MaximumSpeed"]
         for c in num_cols:
             if c in df.columns:
                 df[c] = pd.to_numeric(df[c], errors="coerce")
         
-        # CREATE SpeedKMH_Est from MinimumSpeed and MaximumSpeed
-        # LTA API v4 doesn't provide this field, so we calculate it
         if 'MinimumSpeed' in df.columns and 'MaximumSpeed' in df.columns:
             df["SpeedKMH_Est"] = (df["MinimumSpeed"] + df["MaximumSpeed"]) / 2
         else:
             print("⚠️ Warning: MinimumSpeed or MaximumSpeed not in LTA response")
             return pd.DataFrame()
         
-        # Add time features 
         now = datetime.now()
         df['dow'] = now.weekday()
         df['hour'] = now.hour
         
-        # Add placeholder aggregated features 
         df['incident_count'] = 0
         df['vms_count'] = 0
-        df['cctv_count'] = 36000  # default
-        df['ett_mean'] = 1.75     # default
+        df['cctv_count'] = 36000
+        df['ett_mean'] = 1.75
         
-        # Cap outliers (page 11-12)
         df["SpeedKMH_Est"] = df["SpeedKMH_Est"].clip(0, 120)
         df["MinimumSpeed"] = df["MinimumSpeed"].clip(0, 120)
         df["MaximumSpeed"] = df["MaximumSpeed"].clip(0, 120)
@@ -102,13 +116,11 @@ def get_lta_traffic_speedbands():
         
     except Exception as e:
         print(f"Error fetching LTA data: {e}")
-        import traceback
-        traceback.print_exc()
         return pd.DataFrame()
 
 
 def get_osrm_route(start_lat, start_lon, end_lat, end_lon):
-    """Get route from OSRM. Returns route coordinates and metadata."""
+    """Get route from OSRM."""
     try:
         url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
         params = {
@@ -143,16 +155,12 @@ def get_osrm_route(start_lat, start_lon, end_lat, end_lon):
 
 
 def map_route_to_linkids(route_coords, tbl):
-    """
-    Map OSRM route coordinates to LTA LinkIDs.
-    MVP version: Sample LinkIDs based on route complexity
-    """
+    """Map OSRM route coordinates to LTA LinkIDs."""
     available_links = tbl['LinkID'].unique().tolist()
     
     if not available_links:
         return []
     
-    # Sample based on route length
     num_segments = min(len(route_coords) // 10, 15)
     num_segments = max(num_segments, 5)
     
@@ -164,7 +172,7 @@ def map_route_to_linkids(route_coords, tbl):
 
 
 def aggregate_route_features(route_linkids, tbl):
-    """Aggregate features for a route given its LinkIDs."""
+    """Aggregate features for a route."""
     segs = tbl[tbl["LinkID"].isin(route_linkids)]
     
     if segs.empty:
@@ -187,21 +195,33 @@ def aggregate_route_features(route_linkids, tbl):
 
 
 def parse_coordinates(coord_string):
-    """Parse coordinate string: 'lat,lon'"""
+    """Parse coordinate string OR address string."""
     try:
-        parts = coord_string.replace(' ', '').split(',')
-        if len(parts) != 2:
-            raise ValueError("Invalid coordinate format. Use: lat,lon")
+        # Try coordinates first: "lat,lon"
+        if ',' in coord_string:
+            parts = coord_string.replace(' ', '').split(',')
+            if len(parts) == 2:
+                try:
+                    lat = float(parts[0])
+                    lon = float(parts[1])
+                    
+                    if 1.0 <= lat <= 1.5 and 103.0 <= lon <= 104.5:
+                        return lat, lon
+                except ValueError:
+                    pass
         
-        lat = float(parts[0])
-        lon = float(parts[1])
+        # If not coordinates, geocode as address
+        print(f"🔍 Geocoding: {coord_string}")
+        lat, lon = geocode_address(coord_string)
         
-        if not (1.0 <= lat <= 1.5 and 103.0 <= lon <= 104.5):
-            raise ValueError("Coordinates outside Singapore bounds")
-        
-        return lat, lon
+        if lat and lon:
+            print(f"✅ Found: {lat},{lon}")
+            return lat, lon
+        else:
+            raise ValueError(f"Could not find location: {coord_string}")
+            
     except Exception as e:
-        raise ValueError(f"Invalid coordinates: {e}")
+        raise ValueError(f"Invalid location: {e}")
 
 
 @app.route('/')
@@ -218,8 +238,8 @@ def home():
             '/predict': 'POST - Predict traffic congestion'
         },
         'example': {
-            'from': '1.3521,103.8198',
-            'to': '1.2897,103.8501',
+            'from': 'Orchard Road',
+            'to': 'Marina Bay',
             'departTime': '2025-10-09T09:00:00'
         }
     })
@@ -242,50 +262,38 @@ def predict():
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
         
-        print(f"\n📍 Route request: ({start_lat},{start_lon}) → ({end_lat},{end_lon})")
+        print(f"\n📍 Route: {from_location} → {to_location}")
+        print(f"📍 Coords: ({start_lat},{start_lon}) → ({end_lat},{end_lon})")
         
-        # Get route from OSRM
         osrm_route = get_osrm_route(start_lat, start_lon, end_lat, end_lon)
         
         if not osrm_route:
-            return jsonify({'error': 'Could not find route between coordinates'}), 400
+            return jsonify({'error': 'Could not find route'}), 400
         
-        print(f"🛣️  OSRM route: {osrm_route['distance']/1000:.1f} km, {osrm_route['duration']/60:.0f} min")
+        print(f"🛣️  Route: {osrm_route['distance']/1000:.1f} km, {osrm_route['duration']/60:.0f} min")
         
-        # Get current traffic data
         tbl = get_lta_traffic_speedbands()
         
         if tbl.empty:
-            return jsonify({'error': 'Could not fetch current traffic data from LTA'}), 503
+            return jsonify({'error': 'Could not fetch traffic data'}), 503
         
-        print(f"📊 Fetched {len(tbl)} traffic segments from LTA")
+        print(f"📊 Fetched {len(tbl)} traffic segments")
         
-        # Map route to LinkIDs
         route_linkids = map_route_to_linkids(osrm_route['coordinates'], tbl)
         
-        if not route_linkids or len(route_linkids) == 0:
+        if not route_linkids:
             return jsonify({'error': 'Could not map route to traffic segments'}), 400
         
         if model is None:
-            return jsonify({
-                'error': 'Model not loaded',
-                'message': f'ML model file ({MODEL_PATH}) not found.',
-                'route_info': {
-                    'distance_km': round(osrm_route['distance'] / 1000, 1),
-                    'duration_min': round(osrm_route['duration'] / 60),
-                    'link_ids_count': len(route_linkids)
-                }
-            }), 503
+            return jsonify({'error': 'Model not loaded'}), 503
         
-        # Aggregate features
         features = aggregate_route_features(route_linkids, tbl)
         
         if features is None:
-            return jsonify({'error': 'No traffic data available for route segments'}), 400
+            return jsonify({'error': 'No traffic data available'}), 400
         
-        print(f"📈 Aggregated features: {features}")
+        print(f"📈 Features: {features}")
         
-        # Predict
         X = pd.DataFrame([features])[FEATS]
         proba = model.predict_proba(X)[:, 1][0]
         
@@ -311,7 +319,7 @@ def predict():
         })
     
     except Exception as e:
-        print(f"❌ Error in /predict: {e}")
+        print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -323,8 +331,7 @@ def health():
         'status': 'ok',
         'model_loaded': model is not None,
         'model_path': MODEL_PATH,
-        'features': FEATS,
-        'lta_api_available': True
+        'features': FEATS
     })
 
 
@@ -388,5 +395,4 @@ if __name__ == '__main__':
     print(f"Model loaded: {model is not None}")
     print(f"Features: {FEATS}")
     print("="*60)
-
     app.run(host='0.0.0.0', port=5000, debug=True)
