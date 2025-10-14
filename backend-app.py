@@ -1,4 +1,5 @@
 # backend-app.py (COMPLETE - USING ALL YOUR IPYNB CODE)
+# Flask backend for traffic congestion prediction
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
