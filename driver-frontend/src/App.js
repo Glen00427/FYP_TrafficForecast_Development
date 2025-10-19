@@ -29,7 +29,6 @@ export default function App() {
   const [destination, setDestination] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [predictionResult, setPredictionResult] = useState(null);
-  const [routeCoordinates, setRouteCoordinates] = useState(null);
 
   // auth & gate
   const [user, setUser] = useState(null);
@@ -342,8 +341,6 @@ export default function App() {
           <RoutePreviewSheet
             isGuest={!user}
             onSubmit={async (from, to, options) => {
-              console.log("Preview requested:", { from, to, options });
-
               try {
                 const result = await predictRoutes({
                   from,
@@ -351,13 +348,8 @@ export default function App() {
                   departTime: options?.departAt
                 });
 
-                console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2));
-                console.log('🔍 Best congestionProb:', result.best.congestionProb);
                 console.log('ML Predictions received:', result);
-
-                // Store result to show in dialog
                 setPredictionResult(result);
-                console.log('💾 Set predictionResult state:', result);
 
               } catch (error) {
                 console.error('Prediction failed:', error);
@@ -365,22 +357,6 @@ export default function App() {
               }
             }}
           />
-
-          {/* PREDICTION DIALOG - Inside map-wrapper */}
-          {predictionResult && (
-            <PredictionDialog
-              result={predictionResult}
-              onClose={() => setPredictionResult(null)}
-              onShowRoute={() => {
-                if (predictionResult?.best?.route_coordinates) {
-                  setRouteCoordinates(predictionResult.best.route_coordinates);
-                  setPredictionResult(null);
-                } else {
-                  alert('Route coordinates not available');
-                }
-              }}
-            />
-          )}
         </div>
       </section>
 
@@ -449,6 +425,22 @@ export default function App() {
         onContinue={() => setSignInSuccessOpen(false)}
         autoCloseMs={1800}
       />
+
+      {/* PREDICTION DIALOG - OUTSIDE ALL SECTIONS */}
+      {predictionResult && (
+        <PredictionDialog
+          result={predictionResult}
+          onClose={() => setPredictionResult(null)}
+          onShowRoute={() => {
+            if (predictionResult?.best?.route_coordinates) {
+              setRoute(predictionResult.best.route_coordinates);
+              setPredictionResult(null);
+            } else {
+              alert('Route coordinates not available');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
