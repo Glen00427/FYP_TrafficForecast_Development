@@ -116,41 +116,45 @@ def get_lta_traffic_speedbands():
         return pd.DataFrame()
 
 
-def get_osrm_route(start_lat, start_lon, end_lat, end_lon, alternatives=False):
+def get_multiple_routes(start_lat, start_lon, end_lat, end_lon):
+    """
+    Get multiple route options using OSRM alternatives.
+    Returns at least 1 route, ideally 2-3.
+    """
+    routes = []
+    
     try:
+        # Try to get alternatives from OSRM
         url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
         params = {
             'overview': 'full',
             'geometries': 'geojson',
             'steps': 'true',
-            'alternatives': 'true' if alternatives else 'false'
+            'alternatives': 'true',
+            'alternatives': '2'  # Request up to 2 alternatives
         }
         
         response = requests.get(url, params=params, timeout=15)
         
-        if response.status_code != 200:
-            print(f"OSRM error: {response.status_code}")
-            return [] if alternatives else None
+        if response.status_code == 200:
+            data = response.json()
+            
+            if 'routes' in data and len(data['routes']) > 0:
+                for route in data['routes']:
+                    routes.append({
+                        'coordinates': route['geometry']['coordinates'],
+                        'distance': route['distance'],
+                        'duration': route['duration']
+                    })
         
-        data = response.json()
+        print(f"🛣️  OSRM returned {len(routes)} route(s)")
         
-        if 'routes' not in data or len(data['routes']) == 0:
-            print("No routes found")
-            return [] if alternatives else None
-        
-        routes = []
-        for route in data['routes']:
-            routes.append({
-                'coordinates': route['geometry']['coordinates'],
-                'distance': route['distance'],
-                'duration': route['duration']
-            })
-        
-        return routes if alternatives else routes[0]
+        # If we only got 1 route, that's still okay - return it
+        return routes if routes else None
         
     except Exception as e:
         print(f"OSRM error: {e}")
-        return [] if alternatives else None
+        return None
 
 
 def map_route_to_linkids(route_coords, tbl):
@@ -277,7 +281,7 @@ def predict():
         print(f"📍 Coords: ({start_lat},{start_lon}) → ({end_lat},{end_lon})")
         
         try:
-            osrm_routes = get_osrm_route(start_lat, start_lon, end_lat, end_lon, alternatives=True)
+            osrm_routes = get_multiple_routes(start_lat, start_lon, end_lat, end_lon)
         except Exception as e:
             return jsonify({'error': 'Routing service unavailable. Please try again.'}), 503
         
@@ -301,6 +305,7 @@ def predict():
         
         route_predictions = []
         
+        # Predict congestion for EACH route
         for idx, route in enumerate(osrm_routes):
             try:
                 route_linkids = map_route_to_linkids(route['coordinates'], tbl)
@@ -313,29 +318,40 @@ def predict():
                 if features is None:
                     continue
                 
+                # ML PREDICTION for this specific route
                 X = pd.DataFrame([features])[FEATS]
                 proba = model.predict_proba(X)[:, 1][0]
                 status = 'congested' if proba >= 0.5 else 'clear'
                 
+                # Determine emoji based on congestion level
+                if proba >= 0.7:
+                    emoji = '🔴'
+                    label = 'High Congestion'
+                elif proba >= 0.4:
+                    emoji = '🟡'
+                    label = 'Moderate Traffic'
+                else:
+                    emoji = '🟢'
+                    label = 'Clear Traffic'
+                
+                route_name = f"{from_location} → {to_location}"
+                if idx > 0:
+                    route_name += f" (Route {idx + 1})"
+                
                 route_predictions.append({
                     'route_id': f'route_{idx}',
-                    'route_name': f"{from_location} → {to_location}" + (f" (Alt {idx})" if idx > 0 else ""),
+                    'route_name': route_name,
+                    'label': f'{emoji} {label}',
                     'congestion_prob': round(float(proba), 3),
                     'status': status,
                     'confidence': 0.835,
                     'duration_min': round(route['duration'] / 60),
                     'distance_km': round(route['distance'] / 1000, 1),
                     'link_ids_count': len(route_linkids),
-                    'features_used': features,
-                    'route_info': {
-                        'start': {'lat': start_lat, 'lon': start_lon},
-                        'end': {'lat': end_lat, 'lon': end_lon},
-                        'segments_analyzed': len(route_linkids)
-                    },
                     'route_coordinates': route['coordinates']
                 })
                 
-                print(f"✅ Route {idx}: {proba:.3f} ({status}), {route['distance']/1000:.1f}km, {route['duration']/60:.0f}min")
+                print(f"✅ Route {idx + 1}: {proba:.1%} congested, {route['distance']/1000:.1f}km, {route['duration']/60:.0f}min")
             except Exception as e:
                 print(f"⚠️ Error processing route {idx}: {e}")
                 continue
@@ -343,15 +359,34 @@ def predict():
         if not route_predictions:
             return jsonify({'error': 'Could not analyze traffic for this route. Please try a different route.'}), 400
         
+        # Sort by congestion probability (best = lowest congestion)
         route_predictions.sort(key=lambda x: x['congestion_prob'])
         
+        best_route = route_predictions[0]
+        alternatives = route_predictions[1:] if len(route_predictions) > 1 else []
+        
+        # Add reasoning to explain the recommendation
+        if alternatives:
+            congestion_diff = alternatives[0]['congestion_prob'] - best_route['congestion_prob']
+            if congestion_diff > 0.2:
+                note = f"⚠️ Recommended route has {abs(congestion_diff)*100:.0f}% less congestion than alternatives"
+            else:
+                note = f"Routes have similar congestion levels ({best_route['congestion_prob']:.0%} vs {alternatives[0]['congestion_prob']:.0%})"
+        else:
+            note = f"Only one route available. Congestion: {best_route['congestion_prob']:.0%}"
+        
         response = {
-            'main_route': route_predictions[0],
-            'alternatives': route_predictions[1:] if len(route_predictions) > 1 else [],
-            'total_routes': len(route_predictions)
+            'best': best_route,
+            'alternatives': alternatives,
+            'total_routes': len(route_predictions),
+            'note': note,
+            'explanation': f"Our ML model analyzed live traffic on {best_route['link_ids_count']} road segments along each route path. The recommended route has the lowest predicted congestion based on current traffic conditions."
         }
         
-        print(f"🎯 Best route: {response['main_route']['route_name']} ({response['main_route']['congestion_prob']:.1%} congested)")
+        print(f"🎯 BEST: {best_route['route_name']} ({best_route['congestion_prob']:.1%})")
+        if alternatives:
+            for alt in alternatives:
+                print(f"   Alt: {alt['route_name']} ({alt['congestion_prob']:.1%})")
         
         return jsonify(response)
     
@@ -369,58 +404,6 @@ def health():
         'model_loaded': model is not None,
         'model_path': MODEL_PATH,
         'features': FEATS
-    })
-
-
-@app.route('/test', methods=['GET'])
-def test():
-    if model is None:
-        return jsonify({'error': 'Model not loaded'}), 503
-    
-    samples = pd.DataFrame([
-        {
-            "SpeedKMH_Est": 28.0,
-            "MinimumSpeed": 20.0,
-            "MaximumSpeed": 29.0,
-            "dow": 3,
-            "hour": 9,
-            "incident_count": 74,
-            "vms_count": 3600,
-            "cctv_count": 36000,
-            "ett_mean": 1.75
-        },
-        {
-            "SpeedKMH_Est": 64.5,
-            "MinimumSpeed": 60.0,
-            "MaximumSpeed": 69.0,
-            "dow": 3,
-            "hour": 9,
-            "incident_count": 73,
-            "vms_count": 3348,
-            "cctv_count": 36000,
-            "ett_mean": 1.75
-        }
-    ])[FEATS]
-    
-    proba = model.predict_proba(samples)[:, 1]
-    
-    return jsonify({
-        'test': 'success',
-        'message': 'Model test using notebook samples',
-        'samples': [
-            {
-                'description': 'Slow speed (28 km/h)',
-                'congestion_prob': round(float(proba[0]), 3),
-                'expected': '~0.745 (congested)',
-                'status': 'congested' if proba[0] >= 0.5 else 'clear'
-            },
-            {
-                'description': 'Fast speed (64.5 km/h)',
-                'congestion_prob': round(float(proba[1]), 3),
-                'expected': '~0.075 (clear)',
-                'status': 'congested' if proba[1] >= 0.5 else 'clear'
-            }
-        ]
     })
 
 
