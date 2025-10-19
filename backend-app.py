@@ -5,7 +5,7 @@ from flask_cors import CORS
 import joblib
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import os
 
@@ -100,7 +100,7 @@ def get_lta_traffic_speedbands():
             print("⚠️ Warning: MinimumSpeed or MaximumSpeed not in LTA response")
             return pd.DataFrame()
         
-        now = datetime.now()
+        now = datetime.now() + timedelta(hours=8)  # Convert UTC to Singapore time
         df['dow'] = now.weekday()
         df['hour'] = now.hour
         
@@ -397,3 +397,4 @@ if __name__ == '__main__':
     print(f"Features: {FEATS}")
     print("="*60)
     app.run(host='0.0.0.0', port=5000, debug=True)
+
