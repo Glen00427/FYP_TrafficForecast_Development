@@ -6,7 +6,8 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
 
   const best = result.best;
   const alternatives = result.alternatives || [];
-  const congestionPercent = Math.round(best.congestionProb * 100);
+  // const congestionPercent = Math.round(best.congestionProb * 100);
+  const congestionPercent = Math.round((best.congestionProb || best.congestion_prob) * 100);
 
   return (
     <div style={{
@@ -62,7 +63,8 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
                 paddingBottom: '8px',
                 borderBottom: idx < alternatives.length - 1 ? '1px solid #ddd' : 'none'
               }}>
-                <div>{alt.label} - {Math.round(alt.congestionProb * 100)}% congested</div>
+                {/*<div>{alt.label} - {Math.round(alt.congestionProb * 100)}% congested</div>*/}
+                <div>{alt.label} - {Math.round((alt.congestionProb || alt.congestion_prob) * 100)}% congested</div>
                 <div style={{ color: '#666', fontSize: '13px' }}>
                   {alt.duration_min} min, {alt.distance_km} km
                 </div>
