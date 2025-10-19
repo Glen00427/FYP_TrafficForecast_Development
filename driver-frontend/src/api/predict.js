@@ -27,20 +27,21 @@ export async function predictRoutes({ from, to, departTime }) {
     const data = await response.json();
     console.log('✅ ML Response:', data);
     
+    const mainRoute = data.main_route;
     return {
       best: {
-        id: data.route_id,
-        name: data.route_name,
-        label: data.status === 'congested' ? '🔴 High Congestion' : '🟢 Clear Traffic',
-        confidence: data.confidence,
-        duration: `${data.duration_min} min`,
-        distance: `${data.distance_km} km`,
-        congestionProb: data.congestion_prob,
-        status: data.status,
-        linkIdsCount: data.link_ids_count
+        id: mainRoute.route_id,
+        name: mainRoute.route_name,
+        label: mainRoute.status === 'congested' ? '🔴 High Congestion' : '🟢 Clear Traffic',
+        confidence: mainRoute.confidence,
+        duration: `${mainRoute.duration_min} min`,
+        distance: `${mainRoute.distance_km} km`,
+        congestionProb: mainRoute.congestion_prob,
+        status: mainRoute.status,
+        linkIdsCount: mainRoute.link_ids_count
       },
       worst: null,
-      note: `Congestion: ${Math.round(data.congestion_prob * 100)}% (${data.status})`,
+      note: `Congestion: ${Math.round(mainRoute.congestion_prob * 100)}% (${mainRoute.status})`,
     };
   } catch (error) {
     console.error('🔥 Prediction error:', error);
