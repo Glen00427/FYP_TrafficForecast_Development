@@ -277,10 +277,10 @@ export default function App() {
         <div className="map-wrapper">
           <TrafficMap
             key={mapEpoch}
-            route={route}
-            origin={origin}
-            destination={destination}
-            theme={theme}
+            selectedRoute={route}  // Used by TrafficMap - contains route.geometry
+            origin={origin}        // Not currently used by TrafficMap, kept for future use
+            destination={destination} // Not currently used by TrafficMap, kept for future use
+            theme={theme}          // Used by TrafficMap - contains route.geometry
           />
           <div className="map-overlays-tl">
             <FloatingMenuButton onOpenMenu={openMenu} />
@@ -433,7 +433,10 @@ export default function App() {
           onClose={() => setPredictionResult(null)}
           onShowRoute={() => {
             if (predictionResult?.best?.route_coordinates) {
-              setRoute(predictionResult.best.route_coordinates);
+              // Set the route in the format TrafficMap expects
+              setRoute({
+                geometry: predictionResult.best.route_coordinates
+              });
               setPredictionResult(null);
             } else {
               alert('Route coordinates not available');
