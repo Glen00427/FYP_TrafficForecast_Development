@@ -19,7 +19,6 @@ CORS(app, resources={
     }
 })
 
-# Load model 
 MODEL_PATH = 'congestion_model.pkl'
 model = None
 FEATS = None
@@ -44,12 +43,10 @@ except Exception as e:
         "dow", "hour", "incident_count", "vms_count", "cctv_count", "ett_mean"
     ]
 
-# LTA API credentials 
 LTA_ACCOUNT_KEY = '9/ZLa/JOSf2zKSPsVJ3dUA=='
 
 
 def geocode_address(address):
-    """Convert address string to coordinates using Nominatim (free, no API key)."""
     try:
         url = "https://nominatim.openstreetmap.org/search"
         params = {
@@ -73,7 +70,6 @@ def geocode_address(address):
 
 
 def get_lta_traffic_speedbands():
-    """Fetch current traffic speed bands from LTA API."""
     url = 'https://datamall2.mytransport.sg/ltaodataservice/v4/TrafficSpeedBands'
     headers = {'AccountKey': LTA_ACCOUNT_KEY, 'accept': 'application/json'}
     
@@ -100,7 +96,7 @@ def get_lta_traffic_speedbands():
             print("⚠️ Warning: MinimumSpeed or MaximumSpeed not in LTA response")
             return pd.DataFrame()
         
-        now = datetime.now() + timedelta(hours=8)  # Convert UTC to Singapore time
+        now = datetime.now() + timedelta(hours=8)
         df['dow'] = now.weekday()
         df['hour'] = now.hour
         
@@ -120,43 +116,44 @@ def get_lta_traffic_speedbands():
         return pd.DataFrame()
 
 
-def get_osrm_route(start_lat, start_lon, end_lat, end_lon):
-    """Get route from OSRM."""
+def get_osrm_route(start_lat, start_lon, end_lat, end_lon, alternatives=False):
     try:
         url = f"http://router.project-osrm.org/route/v1/driving/{start_lon},{start_lat};{end_lon},{end_lat}"
         params = {
             'overview': 'full',
             'geometries': 'geojson',
-            'steps': 'true'
+            'steps': 'true',
+            'alternatives': 'true' if alternatives else 'false'
         }
         
         response = requests.get(url, params=params, timeout=15)
         
         if response.status_code != 200:
             print(f"OSRM error: {response.status_code}")
-            return None
+            return [] if alternatives else None
         
         data = response.json()
         
         if 'routes' not in data or len(data['routes']) == 0:
             print("No routes found")
-            return None
+            return [] if alternatives else None
         
-        route = data['routes'][0]
+        routes = []
+        for route in data['routes']:
+            routes.append({
+                'coordinates': route['geometry']['coordinates'],
+                'distance': route['distance'],
+                'duration': route['duration']
+            })
         
-        return {
-            'coordinates': route['geometry']['coordinates'],
-            'distance': route['distance'],
-            'duration': route['duration']
-        }
+        return routes if alternatives else routes[0]
         
     except Exception as e:
         print(f"OSRM error: {e}")
-        return None
+        return [] if alternatives else None
 
 
 def map_route_to_linkids(route_coords, tbl):
-    """Map OSRM route coordinates to LTA LinkIDs."""
     available_links = tbl['LinkID'].unique().tolist()
     
     if not available_links:
@@ -173,7 +170,6 @@ def map_route_to_linkids(route_coords, tbl):
 
 
 def aggregate_route_features(route_linkids, tbl):
-    """Aggregate features for a route."""
     segs = tbl[tbl["LinkID"].isin(route_linkids)]
     
     if segs.empty:
@@ -196,9 +192,7 @@ def aggregate_route_features(route_linkids, tbl):
 
 
 def parse_coordinates(coord_string):
-    """Parse coordinate string OR address string."""
     try:
-        # Try coordinates first: "lat,lon"
         if ',' in coord_string:
             parts = coord_string.replace(' ', '').split(',')
             if len(parts) == 2:
@@ -211,7 +205,6 @@ def parse_coordinates(coord_string):
                 except ValueError:
                     pass
         
-        # If not coordinates, geocode as address
         print(f"🔍 Geocoding: {coord_string}")
         lat, lon = geocode_address(coord_string)
         
@@ -266,12 +259,12 @@ def predict():
         print(f"\n📍 Route: {from_location} → {to_location}")
         print(f"📍 Coords: ({start_lat},{start_lon}) → ({end_lat},{end_lon})")
         
-        osrm_route = get_osrm_route(start_lat, start_lon, end_lat, end_lon)
+        osrm_routes = get_osrm_route(start_lat, start_lon, end_lat, end_lon, alternatives=True)
         
-        if not osrm_route:
+        if not osrm_routes or len(osrm_routes) == 0:
             return jsonify({'error': 'Could not find route'}), 400
         
-        print(f"🛣️  Route: {osrm_route['distance']/1000:.1f} km, {osrm_route['duration']/60:.0f} min")
+        print(f"🛣️  Found {len(osrm_routes)} route(s)")
         
         tbl = get_lta_traffic_speedbands()
         
@@ -280,44 +273,59 @@ def predict():
         
         print(f"📊 Fetched {len(tbl)} traffic segments")
         
-        route_linkids = map_route_to_linkids(osrm_route['coordinates'], tbl)
-        
-        if not route_linkids:
-            return jsonify({'error': 'Could not map route to traffic segments'}), 400
-        
         if model is None:
             return jsonify({'error': 'Model not loaded'}), 503
         
-        features = aggregate_route_features(route_linkids, tbl)
+        route_predictions = []
         
-        if features is None:
-            return jsonify({'error': 'No traffic data available'}), 400
+        for idx, route in enumerate(osrm_routes):
+            route_linkids = map_route_to_linkids(route['coordinates'], tbl)
+            
+            if not route_linkids:
+                continue
+            
+            features = aggregate_route_features(route_linkids, tbl)
+            
+            if features is None:
+                continue
+            
+            X = pd.DataFrame([features])[FEATS]
+            proba = model.predict_proba(X)[:, 1][0]
+            status = 'congested' if proba >= 0.5 else 'clear'
+            
+            route_predictions.append({
+                'route_id': f'route_{idx}',
+                'route_name': f"{from_location} → {to_location}" + (f" (Alt {idx})" if idx > 0 else ""),
+                'congestion_prob': round(float(proba), 3),
+                'status': status,
+                'confidence': 0.835,
+                'duration_min': round(route['duration'] / 60),
+                'distance_km': round(route['distance'] / 1000, 1),
+                'link_ids_count': len(route_linkids),
+                'features_used': features,
+                'route_info': {
+                    'start': {'lat': start_lat, 'lon': start_lon},
+                    'end': {'lat': end_lat, 'lon': end_lon},
+                    'segments_analyzed': len(route_linkids)
+                }
+            })
+            
+            print(f"✅ Route {idx}: {proba:.3f} ({status}), {route['distance']/1000:.1f}km, {route['duration']/60:.0f}min")
         
-        print(f"📈 Features: {features}")
+        if not route_predictions:
+            return jsonify({'error': 'Could not analyze any routes'}), 400
         
-        X = pd.DataFrame([features])[FEATS]
-        proba = model.predict_proba(X)[:, 1][0]
+        route_predictions.sort(key=lambda x: x['congestion_prob'])
         
-        status = 'congested' if proba >= 0.5 else 'clear'
+        response = {
+            'main_route': route_predictions[0],
+            'alternatives': route_predictions[1:] if len(route_predictions) > 1 else [],
+            'total_routes': len(route_predictions)
+        }
         
-        print(f"✅ Prediction: {proba:.3f} ({status})")
+        print(f"🎯 Best route: {response['main_route']['route_name']} ({response['main_route']['congestion_prob']:.1%} congested)")
         
-        return jsonify({
-            'route_id': 'main_route',
-            'route_name': f"{from_location} → {to_location}",
-            'congestion_prob': round(float(proba), 3),
-            'status': status,
-            'confidence': 0.835,
-            'duration_min': round(osrm_route['duration'] / 60),
-            'distance_km': round(osrm_route['distance'] / 1000, 1),
-            'link_ids_count': len(route_linkids),
-            'features_used': features,
-            'route_info': {
-                'start': {'lat': start_lat, 'lon': start_lon},
-                'end': {'lat': end_lat, 'lon': end_lon},
-                'segments_analyzed': len(route_linkids)
-            }
-        })
+        return jsonify(response)
     
     except Exception as e:
         print(f"❌ Error: {e}")
@@ -397,4 +405,3 @@ if __name__ == '__main__':
     print(f"Features: {FEATS}")
     print("="*60)
     app.run(host='0.0.0.0', port=5000, debug=True)
-
