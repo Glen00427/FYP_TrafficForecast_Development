@@ -331,7 +331,8 @@ def predict():
                         'start': {'lat': start_lat, 'lon': start_lon},
                         'end': {'lat': end_lat, 'lon': end_lon},
                         'segments_analyzed': len(route_linkids)
-                    }
+                    },
+                    'route_coordinates': route['coordinates']
                 })
                 
                 print(f"✅ Route {idx}: {proba:.3f} ({status}), {route['distance']/1000:.1f}km, {route['duration']/60:.0f}min")
