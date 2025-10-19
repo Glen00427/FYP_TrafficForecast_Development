@@ -357,6 +357,7 @@ export default function App() {
 
                 // Store result to show in dialog
                 setPredictionResult(result);
+                console.log('💾 Set predictionResult state:', result);
 
               } catch (error) {
                 console.error('Prediction failed:', error);
