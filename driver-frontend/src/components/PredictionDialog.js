@@ -9,8 +9,8 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
   return (
     <>
       {/* Backdrop - separate element */}
-      <div 
-        onClick={onClose} 
+      <div
+        onClick={onClose}
         style={{
           position: 'fixed',
           top: 0,
@@ -19,7 +19,7 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
           bottom: 0,
           background: 'rgba(0,0,0,0.5)',
           zIndex: 9998,
-        }} 
+        }}
       />
 
       {/* Dialog */}
@@ -39,17 +39,17 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
         overflow: 'auto',
       }}>
         <div style={{ marginBottom: '16px' }}>
-          <div style={{ 
-            fontSize: '18px', 
-            fontWeight: 'bold', 
+          <div style={{
+            fontSize: '18px',
+            fontWeight: 'bold',
             marginBottom: '12px',
             color: '#1f2937',
           }}>
             {statusEmoji} Traffic Prediction
           </div>
-          
-          <div style={{ 
-            fontSize: '14px', 
+
+          <div style={{
+            fontSize: '14px',
             lineHeight: '1.6',
             color: '#374151',
           }}>
@@ -61,11 +61,11 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
             <div><strong>Confidence:</strong> {Math.round(result.best.confidence * 100)}%</div>
           </div>
 
-          <div style={{ 
-            marginTop: '12px', 
-            padding: '8px', 
-            background: '#f3f4f6', 
-            borderRadius: '6px', 
+          <div style={{
+            marginTop: '12px',
+            padding: '8px',
+            background: '#f3f4f6',
+            borderRadius: '6px',
             fontSize: '13px',
             color: '#4b5563',
           }}>
@@ -74,8 +74,8 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button 
-            onClick={onShowRoute} 
+          <button
+            onClick={onShowRoute}
             style={{
               flex: 1,
               padding: '12px',
@@ -93,9 +93,9 @@ export default function PredictionDialog({ result, onClose, onShowRoute }) {
           >
             🗺️ Show Route
           </button>
-          
-          <button 
-            onClick={onClose} 
+
+          <button
+            onClick={onClose}
             style={{
               flex: 1,
               padding: '12px',
