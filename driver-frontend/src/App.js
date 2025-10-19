@@ -21,6 +21,8 @@ import NotificationIcon from "./components/NotificationIcon";
 import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
 import { predictRoutes } from './api/predict';
+import PredictionDialog from './components/PredictionDialog'; // Added in 19 Oct
+import LiveTrafficMap from './components/LiveTrafficMap'; // Added in 19 Oct
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -28,6 +30,8 @@ export default function App() {
   const [destination, setDestination] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   // const [predictions, setPredictions] = useState(null);
+  const [predictionResult, setPredictionResult] = useState(null);
+const [routeCoordinates, setRouteCoordinates] = useState(null);
 
   // auth & gate
   const [user, setUser] = useState(null);
@@ -339,42 +343,50 @@ export default function App() {
         </div>
 
         <RoutePreviewSheet
-          isGuest={!user}
-          onSubmit={async (from, to, options) => {
-  console.log("Preview requested:", { from, to, options });
-  
-  try {
-    const result = await predictRoutes({ 
-      from, 
-      to, 
-      departTime: options?.departAt 
-    });
+  isGuest={!user}
+  onSubmit={async (from, to, options) => {
+    console.log("Preview requested:", { from, to, options });
     
-    console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2));
-    console.log('🔍 Best congestionProb:', result.best.congestionProb);
-    console.log('ML Predictions received:', result);
-    
-    // Show detailed results to user
-    const congestionPercent = Math.round(result.best.congestionProb * 100);
-    const statusEmoji = result.best.status === 'congested' ? '🔴' : '🟢';
-    
-    alert(
-      `${statusEmoji} Traffic Prediction\n\n` +
-      `Route: ${result.best.name}\n` +
-      `Status: ${result.best.status.toUpperCase()}\n` +
-      `Congestion: ${congestionPercent}%\n` +
-      `Duration: ${result.best.duration}\n` +
-      `Distance: ${result.best.distance}\n` +
-      `Confidence: ${Math.round(result.best.confidence * 100)}%\n\n` +
-      `${result.note}`
-    );
-    
-  } catch (error) {
-    console.error('Prediction failed:', error);
-    alert('Could not get predictions. Check console.');
-  }
-}}
-        />
+    try {
+      const result = await predictRoutes({ 
+        from, 
+        to, 
+        departTime: options?.departAt 
+      });
+      
+      console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2));
+      console.log('🔍 Best congestionProb:', result.best.congestionProb);
+      console.log('ML Predictions received:', result);
+      
+      // Store result to show in dialog
+      setPredictionResult(result);
+      
+    } catch (error) {
+      console.error('Prediction failed:', error);
+      alert('Could not get predictions. Check console.');
+    }
+  }}
+/>
+// Add the PredictionDialog component right after RoutePreviewSheet (around line 370)
+<PredictionDialog 
+  result={predictionResult}
+  onClose={() => setPredictionResult(null)}
+  onShowRoute={() => {
+    if (predictionResult?.best?.route_coordinates) {
+      setRouteCoordinates(predictionResult.best.route_coordinates);
+      setPredictionResult(null);
+    } else {
+      alert('Route coordinates not available');
+    }
+  }}
+/>
+
+// Replace TrafficMap with LiveTrafficMap (around line 289)
+<LiveTrafficMap
+  key={mapEpoch}
+  routeGeometry={routeCoordinates}
+  theme={theme}
+/>
       </section>
 
       {/* SAVED ROUTES PAGE */}
