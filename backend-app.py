@@ -244,76 +244,103 @@ def predict():
     try:
         data = request.json
         
-        if not data or 'from' not in data or 'to' not in data:
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        if 'from' not in data or 'to' not in data:
             return jsonify({'error': 'Missing required fields: from, to'}), 400
         
         from_location = data['from']
         to_location = data['to']
         
+        if not from_location or not from_location.strip():
+            return jsonify({'error': 'Origin location cannot be empty'}), 400
+        
+        if not to_location or not to_location.strip():
+            return jsonify({'error': 'Destination location cannot be empty'}), 400
+        
+        from_location = from_location.strip()
+        to_location = to_location.strip()
+        
+        if from_location.lower() == to_location.lower():
+            return jsonify({'error': 'Origin and destination cannot be the same'}), 400
+        
         try:
             start_lat, start_lon = parse_coordinates(from_location)
             end_lat, end_lon = parse_coordinates(to_location)
         except ValueError as e:
-            return jsonify({'error': str(e)}), 400
+            return jsonify({'error': f'Location error: {str(e)}'}), 400
+        except Exception as e:
+            return jsonify({'error': 'Failed to process locations. Please check your input.'}), 400
         
         print(f"\n📍 Route: {from_location} → {to_location}")
         print(f"📍 Coords: ({start_lat},{start_lon}) → ({end_lat},{end_lon})")
         
-        osrm_routes = get_osrm_route(start_lat, start_lon, end_lat, end_lon, alternatives=True)
+        try:
+            osrm_routes = get_osrm_route(start_lat, start_lon, end_lat, end_lon, alternatives=True)
+        except Exception as e:
+            return jsonify({'error': 'Routing service unavailable. Please try again.'}), 503
         
         if not osrm_routes or len(osrm_routes) == 0:
-            return jsonify({'error': 'Could not find route'}), 400
+            return jsonify({'error': 'No route found between these locations'}), 404
         
         print(f"🛣️  Found {len(osrm_routes)} route(s)")
         
-        tbl = get_lta_traffic_speedbands()
+        try:
+            tbl = get_lta_traffic_speedbands()
+        except Exception as e:
+            return jsonify({'error': 'Traffic data service unavailable. Please try again.'}), 503
         
         if tbl.empty:
-            return jsonify({'error': 'Could not fetch traffic data'}), 503
+            return jsonify({'error': 'No traffic data available at this time'}), 503
         
         print(f"📊 Fetched {len(tbl)} traffic segments")
         
         if model is None:
-            return jsonify({'error': 'Model not loaded'}), 503
+            return jsonify({'error': 'Prediction model not available'}), 503
         
         route_predictions = []
         
         for idx, route in enumerate(osrm_routes):
-            route_linkids = map_route_to_linkids(route['coordinates'], tbl)
-            
-            if not route_linkids:
+            try:
+                route_linkids = map_route_to_linkids(route['coordinates'], tbl)
+                
+                if not route_linkids:
+                    continue
+                
+                features = aggregate_route_features(route_linkids, tbl)
+                
+                if features is None:
+                    continue
+                
+                X = pd.DataFrame([features])[FEATS]
+                proba = model.predict_proba(X)[:, 1][0]
+                status = 'congested' if proba >= 0.5 else 'clear'
+                
+                route_predictions.append({
+                    'route_id': f'route_{idx}',
+                    'route_name': f"{from_location} → {to_location}" + (f" (Alt {idx})" if idx > 0 else ""),
+                    'congestion_prob': round(float(proba), 3),
+                    'status': status,
+                    'confidence': 0.835,
+                    'duration_min': round(route['duration'] / 60),
+                    'distance_km': round(route['distance'] / 1000, 1),
+                    'link_ids_count': len(route_linkids),
+                    'features_used': features,
+                    'route_info': {
+                        'start': {'lat': start_lat, 'lon': start_lon},
+                        'end': {'lat': end_lat, 'lon': end_lon},
+                        'segments_analyzed': len(route_linkids)
+                    }
+                })
+                
+                print(f"✅ Route {idx}: {proba:.3f} ({status}), {route['distance']/1000:.1f}km, {route['duration']/60:.0f}min")
+            except Exception as e:
+                print(f"⚠️ Error processing route {idx}: {e}")
                 continue
-            
-            features = aggregate_route_features(route_linkids, tbl)
-            
-            if features is None:
-                continue
-            
-            X = pd.DataFrame([features])[FEATS]
-            proba = model.predict_proba(X)[:, 1][0]
-            status = 'congested' if proba >= 0.5 else 'clear'
-            
-            route_predictions.append({
-                'route_id': f'route_{idx}',
-                'route_name': f"{from_location} → {to_location}" + (f" (Alt {idx})" if idx > 0 else ""),
-                'congestion_prob': round(float(proba), 3),
-                'status': status,
-                'confidence': 0.835,
-                'duration_min': round(route['duration'] / 60),
-                'distance_km': round(route['distance'] / 1000, 1),
-                'link_ids_count': len(route_linkids),
-                'features_used': features,
-                'route_info': {
-                    'start': {'lat': start_lat, 'lon': start_lon},
-                    'end': {'lat': end_lat, 'lon': end_lon},
-                    'segments_analyzed': len(route_linkids)
-                }
-            })
-            
-            print(f"✅ Route {idx}: {proba:.3f} ({status}), {route['distance']/1000:.1f}km, {route['duration']/60:.0f}min")
         
         if not route_predictions:
-            return jsonify({'error': 'Could not analyze any routes'}), 400
+            return jsonify({'error': 'Could not analyze traffic for this route. Please try a different route.'}), 400
         
         route_predictions.sort(key=lambda x: x['congestion_prob'])
         
@@ -328,10 +355,10 @@ def predict():
         return jsonify(response)
     
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"❌ Unexpected error: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'An unexpected error occurred. Please try again later.'}), 500
 
 
 @app.route('/health', methods=['GET'])
