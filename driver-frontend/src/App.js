@@ -21,17 +21,15 @@ import NotificationIcon from "./components/NotificationIcon";
 import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
 import { predictRoutes } from './api/predict';
-import PredictionDialog from './components/PredictionDialog'; // Added in 19 Oct
-import LiveTrafficMap from './components/LiveTrafficMap'; // Added in 19 Oct
+import PredictionDialog from './components/PredictionDialog';
 
 export default function App() {
   const [route, setRoute] = useState(null);
   const [origin, setOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  // const [predictions, setPredictions] = useState(null);
   const [predictionResult, setPredictionResult] = useState(null);
-const [routeCoordinates, setRouteCoordinates] = useState(null);
+  const [routeCoordinates, setRouteCoordinates] = useState(null);
 
   // auth & gate
   const [user, setUser] = useState(null);
@@ -49,7 +47,7 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
   // nav
   const [activePage, setActivePage] = useState("live");
 
-  // 🆕 incident form + success modal
+  // incident form + success modal
   const [incidentOpen, setIncidentOpen] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -176,7 +174,7 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
         window.removeEventListener("popstate", onPop);
       };
       window.addEventListener("popstate", onPop, { once: true });
-    } catch {}
+    } catch { }
   }
 
   function closeLearnGoBack() {
@@ -184,21 +182,21 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
     setAccountOpen(true);
     try {
       if (window.history.state?.view === "learn") window.history.back();
-    } catch {}
+    } catch { }
   }
 
   async function handleLogout() {
     try {
       const { doLogout } = await import("./components/logout");
       await doLogout();
-    } catch (_) {}
+    } catch (_) { }
 
     setUser(null);
     setActivePage("live");
     setMenuOpen(false);
     try {
       localStorage.removeItem("role");
-    } catch {}
+    } catch { }
     bumpMap();
   }
 
@@ -261,17 +259,16 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
   // ===== NORMAL APP =====
   return (
     <div className="app" data-theme={theme}>
-      {<SideMenu
-          open={menuOpen}
-          onClose={closeMenu}
-          activePage={activePage}
-          onNavigate={setActivePage}
-          isGuest={!user}
-          onCreateAccount={() => setAccountOpen(true)}
-          onSignIn={() => setSignInOpen(true)}
-          onLogout={handleLogout}
-        />
-      }
+      <SideMenu
+        open={menuOpen}
+        onClose={closeMenu}
+        activePage={activePage}
+        onNavigate={setActivePage}
+        isGuest={!user}
+        onCreateAccount={() => setAccountOpen(true)}
+        onSignIn={() => setSignInOpen(true)}
+        onLogout={handleLogout}
+      />
 
       {/* LIVE MAP PAGE */}
       <section
@@ -307,7 +304,7 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
               try {
                 await saveIncidentReport({ form, user });
                 setIncidentOpen(false);
-                setSubmitOpen(true); // 🆕 show success modal
+                setSubmitOpen(true);
               } catch (e) {
                 console.error(e);
                 alert(e.message || "Failed to save incident");
@@ -315,7 +312,7 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
             }}
           />
 
-          {/* 🆕 Success modal */}
+          {/* Success modal */}
           <ReportIncidentSubmit
             open={submitOpen}
             onClose={() => setSubmitOpen(false)}
@@ -340,60 +337,55 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
               },
             ]}
           />
+
+          {/* Route Preview Sheet */}
+          <RoutePreviewSheet
+            isGuest={!user}
+            onSubmit={async (from, to, options) => {
+              console.log("Preview requested:", { from, to, options });
+
+              try {
+                const result = await predictRoutes({
+                  from,
+                  to,
+                  departTime: options?.departAt
+                });
+
+                console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2));
+                console.log('🔍 Best congestionProb:', result.best.congestionProb);
+                console.log('ML Predictions received:', result);
+
+                // Store result to show in dialog
+                setPredictionResult(result);
+
+              } catch (error) {
+                console.error('Prediction failed:', error);
+                alert('Could not get predictions. Check console.');
+              }
+            }}
+          />
+
+          {/* PREDICTION DIALOG - Inside map-wrapper */}
+          {predictionResult && (
+            <PredictionDialog
+              result={predictionResult}
+              onClose={() => setPredictionResult(null)}
+              onShowRoute={() => {
+                if (predictionResult?.best?.route_coordinates) {
+                  setRouteCoordinates(predictionResult.best.route_coordinates);
+                  setPredictionResult(null);
+                } else {
+                  alert('Route coordinates not available');
+                }
+              }}
+            />
+          )}
         </div>
-
-        <RoutePreviewSheet
-  isGuest={!user}
-  onSubmit={async (from, to, options) => {
-    console.log("Preview requested:", { from, to, options });
-    
-    try {
-      const result = await predictRoutes({ 
-        from, 
-        to, 
-        departTime: options?.departAt 
-      });
-      
-      console.log('🔍 FULL RESULT:', JSON.stringify(result, null, 2));
-      console.log('🔍 Best congestionProb:', result.best.congestionProb);
-      console.log('ML Predictions received:', result);
-      
-      // Store result to show in dialog
-      setPredictionResult(result);
-      
-    } catch (error) {
-      console.error('Prediction failed:', error);
-      alert('Could not get predictions. Check console.');
-    }
-  }}
-/>
-// Add the PredictionDialog component right after RoutePreviewSheet (around line 370)
-<PredictionDialog 
-  result={predictionResult}
-  onClose={() => setPredictionResult(null)}
-  onShowRoute={() => {
-    if (predictionResult?.best?.route_coordinates) {
-      setRouteCoordinates(predictionResult.best.route_coordinates);
-      setPredictionResult(null);
-    } else {
-      alert('Route coordinates not available');
-    }
-  }}
-/>
-
-// Replace TrafficMap with LiveTrafficMap (around line 289)
-<LiveTrafficMap
-  key={mapEpoch}
-  routeGeometry={routeCoordinates}
-  theme={theme}
-/>
       </section>
 
       {/* SAVED ROUTES PAGE */}
       <section
-        className={`page page-saved ${
-          activePage === "saved" ? "is-active" : ""
-        }`}
+        className={`page page-saved ${activePage === "saved" ? "is-active" : ""}`}
         aria-hidden={activePage !== "saved"}
       >
         <SavedRoutes onClose={() => setActivePage("live")} />
@@ -401,9 +393,7 @@ const [routeCoordinates, setRouteCoordinates] = useState(null);
 
       {/* PROFILE / NOTIFICATIONS PAGE */}
       <section
-        className={`page page-profile ${
-          activePage === "profile" ? "is-active" : ""
-        }`}
+        className={`page page-profile ${activePage === "profile" ? "is-active" : ""}`}
         aria-hidden={activePage !== "profile"}
       >
         <NotificationsSettings
