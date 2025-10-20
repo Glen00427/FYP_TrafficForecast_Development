@@ -1,7 +1,7 @@
 //api key: AIzaSyDzxaLJiJgdKYs2WqTPrmeT2k8JoHTj8kk
 
 // driver-frontend/src/components/LiveTrafficMap.js
-import React, { useMemo, useRef, useCallback } from "react";
+import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import {
   GoogleMap,
   LoadScript,
@@ -41,9 +41,9 @@ function normalizePath(routeGeometry) {
     .filter(Boolean);
 }
 
-export default function LiveTrafficMap({
-  routeGeometry = [],
-  incidents = []
+export default function LiveTrafficMap({ 
+  routeGeometry = [], 
+  incidents = [] 
 }) {
   const mapRef = useRef(null);
   const path = useMemo(() => normalizePath(routeGeometry), [routeGeometry]);
@@ -51,7 +51,7 @@ export default function LiveTrafficMap({
   const onMapLoad = useCallback(
     (map) => {
       mapRef.current = map;
-
+      
       // If we have a route, fit bounds to it
       if (path.length > 1) {
         const bounds = new window.google.maps.LatLngBounds();
@@ -65,6 +65,15 @@ export default function LiveTrafficMap({
     },
     [path]
   );
+
+  // Auto-zoom to route when it changes (this is the key addition!)
+  useEffect(() => {
+    if (mapRef.current && path.length > 1) {
+      const bounds = new window.google.maps.LatLngBounds();
+      path.forEach((p) => bounds.extend(p));
+      mapRef.current.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
+    }
+  }, [path]);
 
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_KEY}>
@@ -96,10 +105,10 @@ export default function LiveTrafficMap({
 
         {/* Optional incident markers */}
         {incidents.map((i) => (
-          <Marker
-            key={i.id}
-            position={{ lat: i.lat, lng: i.lng }}
-            title={i.title}
+          <Marker 
+            key={i.id} 
+            position={{ lat: i.lat, lng: i.lng }} 
+            title={i.title} 
           />
         ))}
       </GoogleMap>
