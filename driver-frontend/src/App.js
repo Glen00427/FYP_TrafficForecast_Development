@@ -433,11 +433,15 @@ export default function App() {
           onClose={() => setPredictionResult(null)}
           onShowRoute={() => {
             if (predictionResult?.best?.route_coordinates) {
-              // Set the route in the format TrafficMap expects
               setRoute({
                 geometry: predictionResult.best.route_coordinates
               });
               setPredictionResult(null);
+              setActivePage('live');
+
+              // Close the route preview sheet
+              const closeButton = document.querySelector('.rps-close');
+              if (closeButton) closeButton.click();
             } else {
               alert('Route coordinates not available');
             }
