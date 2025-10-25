@@ -11,6 +11,7 @@ import CreateUserLearnMore from "./components/CreateUserLearnMore";
 import UserSignInForm from "./components/UserSignInForm";
 import UserSignInSuccess from "./components/UserSignInSuccess";
 import { supabase } from "./lib/supabaseClient";
+import { supabase_second } from "../lib/supabase_second";
 import FloatingThemeToggle from "./components/FloatingThemeToggle";
 import FloatingMenuButton from "./components/FloatingMenuButton";
 import RoutePreviewSheet from "./components/RoutePreviewSheet";
@@ -22,6 +23,7 @@ import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
 import { predictRoutes } from './api/predict';
 import PredictionDialog from './components/PredictionDialog';
+import { fetchIncidents } from "./components/fetchIncidents";
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -84,6 +86,19 @@ export default function App() {
     }
   }, [isGuest, activePage]);
 
+
+  //get incidents
+  const [incidents, setIncidents] = useState([]);
+
+  useEffect(() => {
+    async function loadIncidents() {
+      const data = await fetchIncidents();
+      console.log("Fetched incidents:", data);
+      setIncidents(data);
+    }
+    loadIncidents();
+  }, []);
+  
   function handleAuthed(u) {
     const appUser = {
       id: u?.id ?? u?.userid ?? "local",
