@@ -13,11 +13,12 @@ export async function fetchIncidents() {
   }
 
   // Map Supabase columns to the format used by LiveTrafficMap
-  return data.map((i) => ({
-    id: i.id,
-    title: `${i.type}: ${i.message}`,
-    lat: i.latitude,
-    lng: i.longitude,
-    timestamp: i.ts,
-  }));
+   return data
+    .map((row) => ({
+      id: row.id,
+      title: row.description || row.location,
+      lat: parseFloat(row.lat),
+      lng: parseFloat(row.lng),
+    }))
+    .filter((r) => !isNaN(r.lat) && !isNaN(r.lng));
 }
