@@ -22,6 +22,7 @@ import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
 import { predictRoutes } from './api/predict';
 import PredictionDialog from './components/PredictionDialog';
+import { fetchIncidents } from "./components/fetchIncidents";
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -84,6 +85,18 @@ export default function App() {
     }
   }, [isGuest, activePage]);
 
+
+  //get incidents
+  const [incidents, setIncidents] = useState([]);
+
+  useEffect(() => {
+    async function loadIncidents() {
+      const data = await fetchIncidents();
+      setIncidents(data);
+    }
+    loadIncidents();
+  }, []);
+  
   function handleAuthed(u) {
     const appUser = {
       id: u?.id ?? u?.userid ?? "local",
