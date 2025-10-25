@@ -11,6 +11,7 @@ import CreateUserLearnMore from "./components/CreateUserLearnMore";
 import UserSignInForm from "./components/UserSignInForm";
 import UserSignInSuccess from "./components/UserSignInSuccess";
 import { supabase } from "./lib/supabaseClient";
+import { supabase_second } from "../lib/supabase_second";
 import FloatingThemeToggle from "./components/FloatingThemeToggle";
 import FloatingMenuButton from "./components/FloatingMenuButton";
 import RoutePreviewSheet from "./components/RoutePreviewSheet";
@@ -92,6 +93,7 @@ export default function App() {
   useEffect(() => {
     async function loadIncidents() {
       const data = await fetchIncidents();
+      console.log("Fetched incidents:", data);
       setIncidents(data);
     }
     loadIncidents();
