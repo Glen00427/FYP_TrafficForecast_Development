@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkreact=self.webpackChunkreact||[]).push([[7],{7:(t,a,c)=>{c.d(a,{doLogout:()=>u});c(43),c(579);let e=null;try{e=c(759).N}catch(l){}async function u(){try{var t,a;null!==(t=e)&&void 0!==t&&null!==(a=t.auth)&&void 0!==a&&a.signOut&&await e.auth.signOut()}catch(l){}try{localStorage.removeItem("role")}catch(l){}}}}]);
+//# sourceMappingURL=7.ffe6cc22.chunk.js.map
