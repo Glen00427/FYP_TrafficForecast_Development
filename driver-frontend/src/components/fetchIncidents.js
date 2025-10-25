@@ -1,5 +1,5 @@
 // src/components/fetchIncidents.js
-import { supabase_second } from "../lib/supabase_second";
+import { supabase_second } from "./lib/supabase_second";
 
 export async function fetchIncidents() {
   const { data, error } = await supabase
