@@ -132,6 +132,7 @@ export default function LiveTrafficMap({
             onClick={async () => {
               const roadName = await getRoadName(i.lat, i.lng);
               setSelectedIncident({ ...i, roadName }); 
+            }
           />
         ))}
 
