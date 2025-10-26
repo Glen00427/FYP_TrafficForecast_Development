@@ -43,19 +43,15 @@ function normalizePath(routeGeometry) {
 }
 
 async function getRoadName(lat, lng) {
-  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_KEY}`;
-  const res = await fetch(url);
-  const data = await res.json();
-
-  if (data.status === "OK") {
-    const address = data.results[0];
-    const routeComp = address.address_components.find(c =>
-      c.types.includes("route")
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
     );
-    return routeComp?.long_name || address.formatted_address;
-  } else {
-    console.error("Reverse geocode failed", data.status);
-    return null;
+    const data = await res.json();
+    return data?.address?.road || "Unknown road";
+  } catch (err) {
+    console.error("Reverse geocode failed:", err);
+    return "Unknown road";
   }
 }
 
@@ -125,16 +121,18 @@ export default function LiveTrafficMap({
 
         {/* Optional incident markers */}
         {incidents.map((i) => (
-          <Marker 
-            key={i.id} 
-            position={{ lat: i.lat, lng: i.lng }} 
-            title={i.title} 
+          <Marker
+            key={i.id}
+            position={{ lat: i.lat, lng: i.lng }}
+            title={i.title}
             onClick={async () => {
+              // Reverse geocode for road name
               const roadName = await getRoadName(i.lat, i.lng);
-              setSelectedIncident({ ...i, roadName }); 
-            }
+              setSelectedIncident({ ...i, roadName });
+            }}
           />
         ))}
+
 
         {/* InfoWindow for selected incident */}
         {selectedIncident && (
@@ -144,17 +142,21 @@ export default function LiveTrafficMap({
           >
             <div style={{ maxWidth: "200px" }}>
               <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
+
+              {/* Road name ABOVE message */}
               {selectedIncident.roadName && (
-                <p style={{ margin: 0 }}>
-                  <strong>Road:</strong> {selectedIncident.roadName}
+                <p style={{ margin: "0 0 5px 0", fontStyle: "italic" }}>
+                  {selectedIncident.roadName}
                 </p>
               )}
+
+              {/* Message below road name */}
               {selectedIncident.message && (
                 <p style={{ margin: 0 }}>{selectedIncident.message}</p>
               )}
-          </div>
-        </InfoWindow>
-  )}     
+            </div>
+          </InfoWindow>
+        )}
       </GoogleMap>
     </LoadScript>
   );
