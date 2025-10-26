@@ -8,6 +8,7 @@ import {
   TrafficLayer,
   Polyline,
   Marker,
+  InfoWindow
 } from "@react-google-maps/api";
 
 const SG = { lat: 1.3521, lng: 103.8198 }; // Singapore center
