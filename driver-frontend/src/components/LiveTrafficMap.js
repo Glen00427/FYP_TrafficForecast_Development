@@ -48,6 +48,8 @@ export default function LiveTrafficMap({
   const mapRef = useRef(null);
   const path = useMemo(() => normalizePath(routeGeometry), [routeGeometry]);
 
+  const [selectedIncident, setSelectedIncident] = React.useState(null);
+  
   const onMapLoad = useCallback(
     (map) => {
       mapRef.current = map;
@@ -109,8 +111,22 @@ export default function LiveTrafficMap({
             key={i.id} 
             position={{ lat: i.lat, lng: i.lng }} 
             title={i.title} 
+            onClick={() => setSelectedIncident(i)} 
           />
         ))}
+
+        {/* InfoWindow for selected incident */}
+        {selectedIncident && (
+          <InfoWindow
+            position={{ lat: selectedIncident.lat, lng: selectedIncident.lng }}
+            onCloseClick={() => setSelectedIncident(null)}
+          >
+            <div style={{ maxWidth: "200px" }}>
+              <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
+              {selectedIncident.message && <p style={{ margin: 0 }}>{selectedIncident.message}</p>}
+            </div>
+          </InfoWindow>
+        )}      
       </GoogleMap>
     </LoadScript>
   );
