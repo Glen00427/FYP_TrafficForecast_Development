@@ -42,6 +42,23 @@ function normalizePath(routeGeometry) {
     .filter(Boolean);
 }
 
+async function getRoadName(lat, lng) {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_KEY}`;
+  const res = await fetch(url);
+  const data = await res.json();
+
+  if (data.status === "OK") {
+    const address = data.results[0];
+    const routeComp = address.address_components.find(c =>
+      c.types.includes("route")
+    );
+    return routeComp?.long_name || address.formatted_address;
+  } else {
+    console.error("Reverse geocode failed", data.status);
+    return null;
+  }
+}
+
 export default function LiveTrafficMap({ 
   routeGeometry = [], 
   incidents = [] 
@@ -112,7 +129,9 @@ export default function LiveTrafficMap({
             key={i.id} 
             position={{ lat: i.lat, lng: i.lng }} 
             title={i.title} 
-            onClick={() => setSelectedIncident(i)} 
+            onClick={async () => {
+              const roadName = await getRoadName(i.lat, i.lng);
+              setSelectedIncident({ ...i, roadName }); 
           />
         ))}
 
@@ -124,10 +143,17 @@ export default function LiveTrafficMap({
           >
             <div style={{ maxWidth: "200px" }}>
               <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
-              {selectedIncident.message && <p style={{ margin: 0 }}>{selectedIncident.message}</p>}
-            </div>
-          </InfoWindow>
-        )}      
+              {selectedIncident.roadName && (
+                <p style={{ margin: 0 }}>
+                  <strong>Road:</strong> {selectedIncident.roadName}
+                </p>
+              )}
+              {selectedIncident.message && (
+                <p style={{ margin: 0 }}>{selectedIncident.message}</p>
+              )}
+          </div>
+        </InfoWindow>
+  )}     
       </GoogleMap>
     </LoadScript>
   );
