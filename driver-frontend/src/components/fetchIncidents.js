@@ -2,7 +2,7 @@
 import { supabase_second } from "../lib/supabase_second";
 
 export async function fetchIncidents() {
-  const { data, error } = await supabase
+  const { data, error } = await supabase_second
     .from("incidents")
     .select("id, type, message, latitude, longitude, ts")
     .order("ts", { ascending: false });
@@ -16,9 +16,9 @@ export async function fetchIncidents() {
    return data
     .map((row) => ({
       id: row.id,
-      title: row.description || row.location,
-      lat: parseFloat(row.lat),
-      lng: parseFloat(row.lng),
+      title: row.message,
+      lat: parseFloat(row.latitude),
+      lng: parseFloat(row.longitude)
     }))
     .filter((r) => !isNaN(r.lat) && !isNaN(r.lng));
 }

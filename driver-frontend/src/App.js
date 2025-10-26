@@ -293,6 +293,7 @@ export default function App() {
           <TrafficMap
             key={mapEpoch}
             selectedRoute={route}  // Used by TrafficMap - contains route.geometry
+            incidents={incidents}
             origin={origin}        // Not currently used by TrafficMap, kept for future use
             destination={destination} // Not currently used by TrafficMap, kept for future use
             theme={theme}          // Used by TrafficMap - contains route.geometry
