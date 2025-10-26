@@ -121,12 +121,16 @@ export default function LiveTrafficMap({
 
         {/* Optional incident markers */}
         {incidents.map((i) => (
-          <Marker
-            key={i.id}
+          <Marker 
+            key={i.id} 
             position={{ lat: i.lat, lng: i.lng }}
             title={i.title}
+            icon={{
+              url: "/icons/warning.png", 
+              scaledSize: new window.google.maps.Size(35, 35), 
+              anchor: new window.google.maps.Point(17, 34), 
+            }}
             onClick={async () => {
-              // Reverse geocode for road name
               const roadName = await getRoadName(i.lat, i.lng);
               setSelectedIncident({ ...i, roadName });
             }}
