@@ -12,11 +12,21 @@ export async function fetchIncidents() {
     return [];
   }
 
+  const now = new Date();
+  const twentyFourHoursAgo = new Date(now.getTime() - 16 * 60 * 60 * 1000);
+
+  //  Filter only incidents from the last 24 hours
+  const recentData = data.filter((row) => {
+    const incidentTime = new Date(row.ts);
+    return incidentTime >= twentyFourHoursAgo;
+  });
+
   // Map Supabase columns to the format used by LiveTrafficMap
-   return data
+   return recentData
     .map((row) => ({
       id: row.id,
-      title: row.message,
+      title: row.type,
+      message: row.message,
       lat: parseFloat(row.latitude),
       lng: parseFloat(row.longitude)
     }))
