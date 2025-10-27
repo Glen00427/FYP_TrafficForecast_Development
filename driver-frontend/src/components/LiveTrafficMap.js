@@ -120,22 +120,29 @@ export default function LiveTrafficMap({
         )}
 
         {/* Optional incident markers */}
-        {incidents.map((i) => (
-          <Marker 
-            key={i.id} 
-            position={{ lat: i.lat, lng: i.lng }}
-            title={i.title}
-            icon={{
-              url: "/icons/warning.png", 
-              scaledSize: new window.google.maps.Size(35, 35), 
-              anchor: new window.google.maps.Point(17, 34), 
-            }}
-            onClick={async () => {
-              const roadName = await getRoadName(i.lat, i.lng);
-              setSelectedIncident({ ...i, roadName });
-            }}
-          />
-        ))}
+        {incidents.map((i) => {
+          const icon =
+            window.google && window.google.maps
+              ? {
+                  url: "./warning.png",
+                  scaledSize: new window.google.maps.Size(30, 30),
+                  anchor: new window.google.maps.Point(17, 34),
+                }
+              : null; // wait until Google is ready
+
+          return (
+            <Marker
+              key={i.id}
+              position={{ lat: i.lat, lng: i.lng }}
+              title={i.title}
+              icon={icon}
+              onClick={async () => {
+                const roadName = await getRoadName(i.lat, i.lng);
+                setSelectedIncident({ ...i, roadName });
+              }}
+            />
+          );
+        })}
 
 
         {/* InfoWindow for selected incident */}
@@ -144,20 +151,54 @@ export default function LiveTrafficMap({
             position={{ lat: selectedIncident.lat, lng: selectedIncident.lng }}
             onCloseClick={() => setSelectedIncident(null)}
           >
-            <div style={{ maxWidth: "200px" }}>
-              <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
+            <div style={{ maxWidth: "220px" }}>
+              {(() => {
+                // Extract date/time from message
+                const msg = selectedIncident.message || "";
+                const match = msg.match(/\((\d{2}\/\d{2})\)(\d{2}:\d{2})/);
 
-              {/* Road name ABOVE message */}
-              {selectedIncident.roadName && (
-                <p style={{ margin: "0 0 5px 0", fontStyle: "italic" }}>
-                  {selectedIncident.roadName}
-                </p>
-              )}
+                let dateTime = null;
+                let cleanMessage = msg;
 
-              {/* Message below road name */}
-              {selectedIncident.message && (
-                <p style={{ margin: 0 }}>{selectedIncident.message}</p>
-              )}
+                if (match) {
+                  const [full, date, time] = match;
+                  dateTime = `${date} ${time}`;
+                  // Remove the matched date/time part and any leading spaces
+                  cleanMessage = msg.replace(full, "").trim();
+                }
+
+                return (
+                  <>
+                    {/* Date & time above everything */}
+                    {dateTime && (
+                      <p
+                        style={{
+                          margin: "0 0 5px 0",
+                          color: "#6b7280",
+                          fontSize: "0.85em",
+                        }}
+                      >
+                        {dateTime}
+                      </p>
+                    )}
+
+                    {/* Incident type */}
+                    <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
+
+                    {/* Road name ABOVE message */}
+                    {selectedIncident.roadName && (
+                      <p
+                        style={{ margin: "0 0 5px 0", fontStyle: "italic" }}
+                      >
+                        {selectedIncident.roadName}
+                      </p>
+                    )}
+
+                    {/* Message below road name (cleaned) */}
+                    <p style={{ margin: 0 }}>{cleanMessage}</p>
+                  </>
+                );
+              })()}
             </div>
           </InfoWindow>
         )}
