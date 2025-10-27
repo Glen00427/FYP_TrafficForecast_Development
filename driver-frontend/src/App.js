@@ -341,6 +341,22 @@ export default function App() {
           <RoutePreviewSheet
             isGuest={!user}
             onSubmit={async (from, to, options) => {
+              // Validate inputs before calling API
+              if (!from || !from.trim()) {
+                alert('Please enter a starting location');
+                return;
+              }
+
+              if (!to || !to.trim()) {
+                alert('Please enter a destination');
+                return;
+              }
+
+              if (from.trim().toLowerCase() === to.trim().toLowerCase()) {
+                alert('Origin and destination cannot be the same');
+                return;
+              }
+
               try {
                 const result = await predictRoutes({
                   from,
