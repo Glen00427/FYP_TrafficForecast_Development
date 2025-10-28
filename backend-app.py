@@ -19,7 +19,7 @@ CORS(app, resources={
     }
 })
 
-MODEL_PATH = 'congestion_model.pkl'
+MODEL_PATH = 'congestion_model_2.pkl'
 model = None
 FEATS = None
 

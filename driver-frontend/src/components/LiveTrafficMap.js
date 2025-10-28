@@ -106,13 +106,25 @@ export default function LiveTrafficMap({
         )}
 
         {/* Optional incident markers */}
-        {incidents.map((i) => (
-          <Marker
-            key={i.id}
-            position={{ lat: i.latitude, lng: i.longitude }}
-            onClick={() => setSelectedIncident(i)}
-          />
-        ))}
+        {incidents.map((i) => {
+          const icon = // CHANGED
+            window.google && window.google.maps
+              ? {
+                url: "./warning.png",
+                scaledSize: new window.google.maps.Size(30, 30),
+                anchor: new window.google.maps.Point(17, 34),
+              }
+              : null;
+
+          return (
+            <Marker
+              key={i.id}
+              position={{ lat: i.latitude, lng: i.longitude }}
+              icon={icon} // CHANGED
+              onClick={() => setSelectedIncident(i)} // CHANGED
+            />
+          );
+        })}
 
         {selectedIncident && ( // CHANGED
           <InfoWindow
