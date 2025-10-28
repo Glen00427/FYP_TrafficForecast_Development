@@ -415,4 +415,11 @@ if __name__ == '__main__':
     print(f"Model loaded: {model is not None}")
     print(f"Features: {FEATS}")
     print("="*60)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+
+    # app.run(host='0.0.0.0', port=5000, debug=True)
+    # Get port from environment variable (Render sets this)
+    port = int(os.environ.get('PORT', 5000))
+    print(f"🚀 Starting on port: {port}")
+    print("="*60)
+    
+    app.run(host='0.0.0.0', port=port, debug=False)
