@@ -1,8 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+// driver-frontend/src/lib/supabaseClient.js
+import { createClient } from '@supabase/supabase-js';
 
-// 🔒 For prototyping only: hardcode public (anon) creds.
-const SUPABASE_URL = "https://wesscwzrsuyiqdeccysm.supabase.co";
+// ✅ THIS IS YOUR CLONE SUPABASE — CONFIRMED EARLIER
+const SUPABASE_URL = 'https://umkvacgyqkjgdbijaohd.supabase.co';
 const SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlc3Njd3pyc3V5aXFkZWNjeXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzEwOTMsImV4cCI6MjA3MzE0NzA5M30.5BRLFWRcKaQlNUpOPRwVjP51M3kXaDH4YadqwY5Qmx0";
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVta3ZhY2d5cWtqZ2RiaWphb2hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2MzQ1MTUsImV4cCI6MjA3NzIxMDUxNX0.5PvdpdzMtr6QV8ArCnovMgdJsd1btQ--y7ZAoGORM_k';
 
+// ✅ Single source of truth — your frontend now connects to clone instance
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

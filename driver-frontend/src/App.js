@@ -22,6 +22,7 @@ import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
 import { predictRoutes } from './api/predict';
 import PredictionDialog from './components/PredictionDialog';
+import { fetchIncidents } from "./fetchIncidents"; // ← ADDED
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -78,11 +79,21 @@ export default function App() {
   const signupFlowOpen = accountOpen || learnOpen || createAccountSuccess;
   const gateOpen = gateBlocking && !signupFlowOpen;
 
+  const [incidents, setIncidents] = useState([]); // ← ADDED
+
   useEffect(() => {
     if (isGuest && (activePage === "saved" || activePage === "profile")) {
       setActivePage("live");
     }
   }, [isGuest, activePage]);
+
+  useEffect(() => {
+    async function loadData() {
+      const rows = await fetchIncidents();
+      setIncidents(rows);
+    }
+    loadData();
+  }, []); // ← ADDED
 
   function handleAuthed(u) {
     const appUser = {
@@ -281,6 +292,7 @@ export default function App() {
             origin={origin}        // Not currently used by TrafficMap, kept for future use
             destination={destination} // Not currently used by TrafficMap, kept for future use
             theme={theme}          // Used by TrafficMap - contains route.geometry
+            incidents={incidents} // ← ADDED
           />
           <div className="map-overlays-tl">
             <FloatingMenuButton onOpenMenu={openMenu} />
