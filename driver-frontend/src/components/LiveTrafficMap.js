@@ -1,13 +1,14 @@
 //api key: AIzaSyDzxaLJiJgdKYs2WqTPrmeT2k8JoHTj8kk
 
 // driver-frontend/src/components/LiveTrafficMap.js
-import React, { useMemo, useRef, useCallback, useEffect } from "react";
+import React, { useMemo, useRef, useCallback, useEffect, useState } from "react";
 import {
   GoogleMap,
   LoadScript,
   TrafficLayer,
   Polyline,
   Marker,
+  InfoWindow, // CHANGED
 } from "@react-google-maps/api";
 
 const SG = { lat: 1.3521, lng: 103.8198 }; // Singapore center
@@ -41,17 +42,18 @@ function normalizePath(routeGeometry) {
     .filter(Boolean);
 }
 
-export default function LiveTrafficMap({ 
-  routeGeometry = [], 
-  incidents = [] 
+export default function LiveTrafficMap({
+  routeGeometry = [],
+  incidents = []
 }) {
   const mapRef = useRef(null);
+  const [selectedIncident, setSelectedIncident] = useState(null); // CHANGED (added state)
   const path = useMemo(() => normalizePath(routeGeometry), [routeGeometry]);
 
   const onMapLoad = useCallback(
     (map) => {
       mapRef.current = map;
-      
+
       // If we have a route, fit bounds to it
       if (path.length > 1) {
         const bounds = new window.google.maps.LatLngBounds();
@@ -105,12 +107,33 @@ export default function LiveTrafficMap({
 
         {/* Optional incident markers */}
         {incidents.map((i) => (
-          <Marker 
-            key={i.id} 
-            position={{ lat: i.lat, lng: i.lng }} 
-            title={i.title} 
+          <Marker
+            key={i.id}
+            position={{ lat: i.latitude, lng: i.longitude }}
+            onClick={() => setSelectedIncident(i)}
           />
         ))}
+
+        {selectedIncident && ( // CHANGED
+          <InfoWindow
+            position={{
+              lat: selectedIncident.latitude,
+              lng: selectedIncident.longitude,
+            }}
+            onCloseClick={() => setSelectedIncident(null)} // CHANGED
+          >
+            <div style={{ maxWidth: "220px" }}> {/* CHANGED */}
+              <p style={{ margin: "0 0 5px 0", color: "#6b7280", fontSize: "0.85em" }}>
+                {new Date(selectedIncident.ts).toLocaleString()} {/* CHANGED */}
+              </p>
+              <h4 style={{ margin: "0 0 5px 0" }}>
+                {selectedIncident.type || "Traffic Incident"} {/* CHANGED */}
+              </h4>
+              <p style={{ margin: 0 }}>{selectedIncident.message}</p> {/* CHANGED */}
+            </div>
+          </InfoWindow>
+        )}
+
       </GoogleMap>
     </LoadScript>
   );
