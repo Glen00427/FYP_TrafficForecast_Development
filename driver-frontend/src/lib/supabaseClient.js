@@ -1,10 +1,7 @@
 // driver-frontend/src/lib/supabaseClient.js
 import { createClient } from '@supabase/supabase-js';
 
-// ✅ THIS IS YOUR CLONE SUPABASE — CONFIRMED EARLIER
-const SUPABASE_URL = 'https://umkvacgyqkjgdbijaohd.supabase.co';
-const SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVta3ZhY2d5cWtqZ2RiaWphb2hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2MzQ1MTUsImV4cCI6MjA3NzIxMDUxNX0.5PvdpdzMtr6QV8ArCnovMgdJsd1btQ--y7ZAoGORM_k';
+const SUPABASE_URL = 'https://vxistpqjjavwykdsgeur.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4aXN0cHFqamF2d3lrZHNnZXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwODMzNTQsImV4cCI6MjA3NDY1OTM1NH0.2JfYXhZuL6wKEJMZV_LRcFgAr3xguLkgegxr5V7_u1Y';
 
-// ✅ Single source of truth — your frontend now connects to clone instance
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
