@@ -771,31 +771,32 @@
   color: var(--text-secondary);
 }
 
+/* Status Badges for UserTab */
 .status-badge {
-  padding: 6px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px var(--shadow-color);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+  text-align: center;
+  min-width: 70px;
 }
 
-.status-badge.active {
-  background: linear-gradient(135deg, var(--success-color), #34d399);
+.status-badge-active {
+  background-color: #10b981; /* Green */
   color: white;
 }
 
-.status-badge.banned {
-  background: linear-gradient(135deg, var(--danger-color), #f87171);
+.status-badge-banned {
+  background-color: #ef4444; /* Red */
   color: white;
 }
 
-.status-badge.inactive {
-  background: linear-gradient(135deg, #6b7280, #9ca3af);
+.status-badge-inactive {
+  background-color: #6b7280; /* Grey */
   color: white;
 }
-
 .user-actions {
   display: flex;
   gap: 8px;
@@ -817,12 +818,24 @@
   font-weight: 500;
 }
 
+/* Pagination Styles */
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-top: 1px solid var(--border-color);
+  background-color: var(--card-bg);
+  margin-top: 16px;
+}
+
 .pagination {
   display: flex;
   gap: 6px;
+  align-items: center;
 }
 
-.pagination button {
+.pagination-btn {
   padding: 8px 14px;
   border: 1px solid var(--border-color);
   background: var(--card-bg);
@@ -831,14 +844,36 @@
   cursor: pointer;
   font-weight: 600;
   transition: all 0.3s ease;
+  font-size: 14px;
 }
 
-.pagination button:hover {
+.pagination-btn:hover:not(:disabled) {
   background: var(--primary-color);
   color: white;
   transform: translateY(-1px);
 }
 
+.pagination-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+  transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  border-color: var(--border-color);
+  transform: none;
+  opacity: 0.6;
+}
+
+.pagination-ellipsis {
+  padding: 8px 6px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
 /* Analytics */
 .analytics-tab {
   display: flex;
@@ -1471,4 +1506,145 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 2px solid var(--primary-color);
   outline-offset: 2px;
+}
+
+.header-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.refresh-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.refresh-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 40px;
+}
+
+.spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 2s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Role Badges */
+.role-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.role-badge-admin {
+  background-color: #dc2626;
+  color: white;
+}
+
+.role-badge-moderator {
+  background-color: #ea580c;
+  color: white;
+}
+
+.role-badge-user {
+  background-color: #059669;
+  color: white;
+}
+
+/* Role Modal Styles */
+.role-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.role-option {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.role-option:hover {
+  border-color: #3b82f6;
+  background-color: #f8fafc;
+}
+
+.role-option input[type="radio"] {
+  margin-right: 12px;
+  margin-top: 2px;
+}
+
+.role-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.role-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.role-description {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.role-option input[type="radio"]:checked + .role-info .role-name {
+  color: #3b82f6;
+}
+
+/* Button Styles */
+.btn-info {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-info:hover {
+  background-color: #2563eb;
+}
+
+.btn-info:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
 }

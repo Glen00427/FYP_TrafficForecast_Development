@@ -1,7 +1,25 @@
 import React, { useState } from "react";
 
 function AddTagsModal({ incident, onClose, onAddTags }) {
-  const [tags, setTags] = useState(incident.tags?.join(", ") || "");
+  // Convert existing tags from text to array for display
+  const initialTags = incident.tags
+    ? incident.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter((tag) => tag)
+    : [];
+
+  const [tags, setTags] = useState(initialTags.join(", "));
+
+  const handleSubmit = () => {
+    // Convert back to comma-separated text for database
+    const tagsArray = tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag);
+    const tagsText = tagsArray.join(", ");
+    onAddTags(tagsText);
+  };
 
   return (
     <div className="modal-overlay">
@@ -15,19 +33,17 @@ function AddTagsModal({ incident, onClose, onAddTags }) {
         <div className="tags-form">
           <input
             type="text"
-            placeholder="e.g. recurring, verified, roadwork..."
+            placeholder="e.g. verified, urgent, recurring (comma separated)"
             value={tags}
             onChange={(e) => setTags(e.target.value)}
           />
+          <p className="help-text">Separate multiple tags with commas</p>
         </div>
         <div className="modal-actions">
           <button onClick={onClose} className="btn-outline">
             Cancel
           </button>
-          <button
-            onClick={() => onAddTags(tags.split(",").map((tag) => tag.trim()))}
-            className="btn-primary"
-          >
+          <button onClick={handleSubmit} className="btn-primary">
             Add Tags
           </button>
         </div>
