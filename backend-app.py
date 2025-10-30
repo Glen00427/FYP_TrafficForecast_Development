@@ -13,7 +13,7 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
         "origins": [
-            "https://curly-space-system-g4xw75qxrxq4fjj-3000.app.github.dev",
+            "https://fyp-trafficforecast-development-driver.onrender.com",
             "http://localhost:3000"
         ]
     }
@@ -422,4 +422,5 @@ if __name__ == '__main__':
     print(f"🚀 Starting on port: {port}")
     print("="*60)
     
+
     app.run(host='0.0.0.0', port=port, debug=False)
