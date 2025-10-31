@@ -20,9 +20,9 @@ import { saveIncidentReport } from "./components/saveIncident";
 import NotificationIcon from "./components/NotificationIcon";
 import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
-import { predictRoutes } from './api/predict';
-import PredictionDialog from './components/PredictionDialog';
-import { fetchIncidents } from "./fetchIncidents"; // ← ADDED
+import { predictRoutes } from "./api/predict";
+import PredictionDialog from "./components/PredictionDialog";
+import { fetchIncidents } from "./fetchIncidents"; // ← incidents loader
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -79,7 +79,9 @@ export default function App() {
   const signupFlowOpen = accountOpen || learnOpen || createAccountSuccess;
   const gateOpen = gateBlocking && !signupFlowOpen;
 
-  const [incidents, setIncidents] = useState([]); // ← ADDED
+  const [incidents, setIncidents] = useState([]);
+
+  const [lastFromTo, setLastFromTo] = useState({ from: "", to: "" });
 
   useEffect(() => {
     if (isGuest && (activePage === "saved" || activePage === "profile")) {
@@ -93,9 +95,23 @@ export default function App() {
       setIncidents(rows);
     }
     loadData();
-  }, []); // ← ADDED
+  }, []);
 
-  function handleAuthed(u) {
+  // ---------- ADDED: fetch friendly name from Supabase users ----------
+  async function getDbUserName({ id, email }) {
+    try {
+      let q = supabase.from("users").select("name").limit(1);
+      if (id) q = q.eq("id", id);
+      else if (email) q = q.eq("email", (email || "").toLowerCase());
+      const { data, error } = await q.single();
+      if (error) return null;
+      return data?.name || null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function handleAuthed(u) {
     const appUser = {
       id: u?.id ?? u?.userid ?? "local",
       name: u?.name ?? "",
@@ -103,6 +119,11 @@ export default function App() {
       phone: u?.phone ?? "",
       role: u?.role ?? "user",
     };
+
+    // pull display name from DB if available
+    const dbName = await getDbUserName({ id: appUser.id, email: appUser.email });
+    if (dbName) appUser.name = dbName;
+
     setUser(appUser);
     setActivePage("live");
     setSignInSuccessOpen(true);
@@ -110,6 +131,7 @@ export default function App() {
     setMenuOpen(false);
     bumpMap();
   }
+  // ---------- end ADDED ----------
 
   async function geocode(query) {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -184,7 +206,7 @@ export default function App() {
         window.removeEventListener("popstate", onPop);
       };
       window.addEventListener("popstate", onPop, { once: true });
-    } catch { }
+    } catch {}
   }
 
   function closeLearnGoBack() {
@@ -192,21 +214,21 @@ export default function App() {
     setAccountOpen(true);
     try {
       if (window.history.state?.view === "learn") window.history.back();
-    } catch { }
+    } catch {}
   }
 
   async function handleLogout() {
     try {
       const { doLogout } = await import("./components/logout");
       await doLogout();
-    } catch (_) { }
+    } catch (_) {}
 
     setUser(null);
     setActivePage("live");
     setMenuOpen(false);
     try {
       localStorage.removeItem("role");
-    } catch { }
+    } catch {}
     bumpMap();
   }
 
@@ -278,6 +300,7 @@ export default function App() {
         onCreateAccount={() => setAccountOpen(true)}
         onSignIn={() => setSignInOpen(true)}
         onLogout={handleLogout}
+        userName={user?.name || "User"}  // ← ADDED: greet with name
       />
 
       {/* LIVE MAP PAGE */}
@@ -288,11 +311,11 @@ export default function App() {
         <div className="map-wrapper">
           <TrafficMap
             key={mapEpoch}
-            selectedRoute={route}  // Used by TrafficMap - contains route.geometry
-            origin={origin}        // Not currently used by TrafficMap, kept for future use
-            destination={destination} // Not currently used by TrafficMap, kept for future use
-            theme={theme}          // Used by TrafficMap - contains route.geometry
-            incidents={incidents} // ← ADDED
+            selectedRoute={route}      // keep Script 2 prop
+            origin={origin}
+            destination={destination}
+            theme={theme}
+            incidents={incidents}      // incidents overlay
           />
           <div className="map-overlays-tl">
             <FloatingMenuButton onOpenMenu={openMenu} />
@@ -353,19 +376,18 @@ export default function App() {
           <RoutePreviewSheet
             isGuest={!user}
             onSubmit={async (from, to, options) => {
-              // Validate inputs before calling API
+              setLastFromTo({ from, to }); 
+              // Script 2 validation kept intact
               if (!from || !from.trim()) {
-                alert('Please enter a starting location');
+                alert("Please enter a starting location");
                 return;
               }
-
               if (!to || !to.trim()) {
-                alert('Please enter a destination');
+                alert("Please enter a destination");
                 return;
               }
-
               if (from.trim().toLowerCase() === to.trim().toLowerCase()) {
-                alert('Origin and destination cannot be the same');
+                alert("Origin and destination cannot be the same");
                 return;
               }
 
@@ -373,17 +395,16 @@ export default function App() {
                 const result = await predictRoutes({
                   from,
                   to,
-                  departTime: options?.departAt
+                  departTime: options?.departAt,
                 });
-
-                console.log('ML Predictions received:', result);
+                console.log("ML Predictions received:", result);
                 setPredictionResult(result);
-
               } catch (error) {
-                console.error('Prediction failed:', error);
-                alert('Could not get predictions. Check console.');
+                console.error("Prediction failed:", error);
+                alert("Could not get predictions. Check console.");
               }
             }}
+            // ---------- end ADDED ----------
           />
         </div>
       </section>
@@ -393,7 +414,10 @@ export default function App() {
         className={`page page-saved ${activePage === "saved" ? "is-active" : ""}`}
         aria-hidden={activePage !== "saved"}
       >
-        <SavedRoutes onClose={() => setActivePage("live")} />
+        <SavedRoutes
+          userId={user?.id}                // ← pass user id so list filters correctly
+          onClose={() => setActivePage("live")}
+        />
       </section>
 
       {/* PROFILE / NOTIFICATIONS PAGE */}
@@ -458,24 +482,22 @@ export default function App() {
       {predictionResult && (
         <PredictionDialog
           result={predictionResult}
+          userId={user?.id}                 
           onClose={() => setPredictionResult(null)}
           onShowRoute={() => {
             if (predictionResult?.best?.route_coordinates) {
-              setRoute({
-                geometry: predictionResult.best.route_coordinates
-              });
+              setRoute({ geometry: predictionResult.best.route_coordinates });
               setPredictionResult(null);
-              setActivePage('live');
-
-              // Close the route preview sheet
-              const closeButton = document.querySelector('.rps-close');
-              if (closeButton) closeButton.click();
+              setActivePage("live");
+              const closeBtn = document.querySelector(".rps-close");
+              if (closeBtn) closeBtn.click();
             } else {
-              alert('Route coordinates not available');
+              alert("Route coordinates not available");
             }
           }}
         />
       )}
+
     </div>
   );
 }

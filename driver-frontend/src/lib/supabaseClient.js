@@ -1,7 +1,8 @@
-// driver-frontend/src/lib/supabaseClient.js
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = 'https://vxistpqjjavwykdsgeur.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4aXN0cHFqamF2d3lrZHNnZXVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkwODMzNTQsImV4cCI6MjA3NDY1OTM1NH0.2JfYXhZuL6wKEJMZV_LRcFgAr3xguLkgegxr5V7_u1Y';
+// 🔒 For prototyping only: hardcode public (anon) creds.
+const SUPABASE_URL = "https://wesscwzrsuyiqdeccysm.supabase.co";
+const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlc3Njd3pyc3V5aXFkZWNjeXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzEwOTMsImV4cCI6MjA3MzE0NzA5M30.5BRLFWRcKaQlNUpOPRwVjP51M3kXaDH4YadqwY5Qmx0";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

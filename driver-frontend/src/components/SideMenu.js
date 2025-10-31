@@ -117,7 +117,7 @@ export default function SideMenu({
                 🟣
               </div>
               <div className="sm-user-main">
-                <div className="sm-user-name">{userName}</div>
+                <div className="sm-user-name">Hello {userName}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     className="sm-user-pill"

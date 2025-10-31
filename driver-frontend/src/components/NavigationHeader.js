@@ -7,7 +7,7 @@ export default function NavigationHeader({
   onOpenMenu,
   onLogout,
   onToggleTheme,
-  firstName,
+  name,
   theme = "light",
   isGuest = false,
   isAdmin = false, // kept for future use
@@ -31,7 +31,7 @@ export default function NavigationHeader({
           <div className="title">SG Traffic Forecast</div>
 
           {/* Greet logged-in users */}
-          {!isGuest && firstName && (
+          {!isGuest && name && (
             <span
               style={{
                 marginLeft: 8,
@@ -40,7 +40,7 @@ export default function NavigationHeader({
                 whiteSpace: "nowrap",
               }}
             >
-              Hello {firstName}
+              Hello {name}
             </span>
           )}
 
