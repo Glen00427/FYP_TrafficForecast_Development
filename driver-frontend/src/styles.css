@@ -4069,3 +4069,17 @@ button:not(:disabled):active {
   margin: 0 !important;
   z-index: var(--z-overlay, 99990);
 }
+
+.page.page-saved {
+  position: absolute;       
+  inset: 0;
+  overflow-y: auto;          
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch; 
+  background: var(--bg, #f8fafc);
+}
+
+.page.page-saved .sr-page {
+  min-height: 100%;
+  padding-bottom: 48px;     
+}

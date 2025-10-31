@@ -22,7 +22,7 @@ import LiveNotifications from "./components/LiveNotifications";
 import ReportIncidentSubmit from "./components/ReportIncidentSubmit";
 import { predictRoutes } from "./api/predict";
 import PredictionDialog from "./components/PredictionDialog";
-import { fetchIncidents } from "./fetchIncidents"; // ← incidents loader
+import { fetchIncidents } from "./fetchIncidents";
 
 export default function App() {
   const [route, setRoute] = useState(null);
@@ -81,8 +81,6 @@ export default function App() {
 
   const [incidents, setIncidents] = useState([]);
 
-  const [lastFromTo, setLastFromTo] = useState({ from: "", to: "" });
-
   useEffect(() => {
     if (isGuest && (activePage === "saved" || activePage === "profile")) {
       setActivePage("live");
@@ -97,21 +95,12 @@ export default function App() {
     loadData();
   }, []);
 
-  // ---------- ADDED: fetch friendly name from Supabase users ----------
-  async function getDbUserName({ id, email }) {
-    try {
-      let q = supabase.from("users").select("name").limit(1);
-      if (id) q = q.eq("id", id);
-      else if (email) q = q.eq("email", (email || "").toLowerCase());
-      const { data, error } = await q.single();
-      if (error) return null;
-      return data?.name || null;
-    } catch {
-      return null;
-    }
-  }
+  // Mirror current user to a global for components that don't receive props
+  useEffect(() => {
+    window.__APP_USER = user || null;
+  }, [user]);
 
-  async function handleAuthed(u) {
+  function handleAuthed(u) {
     const appUser = {
       id: u?.id ?? u?.userid ?? "local",
       name: u?.name ?? "",
@@ -119,11 +108,6 @@ export default function App() {
       phone: u?.phone ?? "",
       role: u?.role ?? "user",
     };
-
-    // pull display name from DB if available
-    const dbName = await getDbUserName({ id: appUser.id, email: appUser.email });
-    if (dbName) appUser.name = dbName;
-
     setUser(appUser);
     setActivePage("live");
     setSignInSuccessOpen(true);
@@ -131,7 +115,6 @@ export default function App() {
     setMenuOpen(false);
     bumpMap();
   }
-  // ---------- end ADDED ----------
 
   async function geocode(query) {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
@@ -300,7 +283,6 @@ export default function App() {
         onCreateAccount={() => setAccountOpen(true)}
         onSignIn={() => setSignInOpen(true)}
         onLogout={handleLogout}
-        userName={user?.name || "User"}  // ← ADDED: greet with name
       />
 
       {/* LIVE MAP PAGE */}
@@ -311,11 +293,11 @@ export default function App() {
         <div className="map-wrapper">
           <TrafficMap
             key={mapEpoch}
-            selectedRoute={route}      // keep Script 2 prop
+            selectedRoute={route}
             origin={origin}
             destination={destination}
             theme={theme}
-            incidents={incidents}      // incidents overlay
+            incidents={incidents}
           />
           <div className="map-overlays-tl">
             <FloatingMenuButton onOpenMenu={openMenu} />
@@ -376,8 +358,6 @@ export default function App() {
           <RoutePreviewSheet
             isGuest={!user}
             onSubmit={async (from, to, options) => {
-              setLastFromTo({ from, to }); 
-              // Script 2 validation kept intact
               if (!from || !from.trim()) {
                 alert("Please enter a starting location");
                 return;
@@ -404,7 +384,6 @@ export default function App() {
                 alert("Could not get predictions. Check console.");
               }
             }}
-            // ---------- end ADDED ----------
           />
         </div>
       </section>
@@ -414,11 +393,13 @@ export default function App() {
         className={`page page-saved ${activePage === "saved" ? "is-active" : ""}`}
         aria-hidden={activePage !== "saved"}
       >
-        <SavedRoutes
-          userId={user?.id}                // ← pass user id so list filters correctly
-          onClose={() => setActivePage("live")}
-        />
-      </section>
+      <SavedRoutes
+        key={user ? String(user.id ?? user.userid) : "guest"} 
+        userId={user ? Number(user.id ?? user.userid) : 0}
+        active={activePage === "saved"}                    
+        onClose={() => setActivePage("live")}
+       />
+    </section>
 
       {/* PROFILE / NOTIFICATIONS PAGE */}
       <section
@@ -478,26 +459,25 @@ export default function App() {
         autoCloseMs={1800}
       />
 
-      {/* PREDICTION DIALOG - OUTSIDE ALL SECTIONS */}
+      {/* PREDICTION DIALOG */}
       {predictionResult && (
         <PredictionDialog
           result={predictionResult}
-          userId={user?.id}                 
           onClose={() => setPredictionResult(null)}
           onShowRoute={() => {
             if (predictionResult?.best?.route_coordinates) {
               setRoute({ geometry: predictionResult.best.route_coordinates });
               setPredictionResult(null);
               setActivePage("live");
-              const closeBtn = document.querySelector(".rps-close");
-              if (closeBtn) closeBtn.click();
+              const closeButton = document.querySelector(".rps-close");
+              if (closeButton) closeButton.click();
             } else {
               alert("Route coordinates not available");
             }
           }}
+          user={user} // ✅ pass user down
         />
       )}
-
     </div>
   );
 }

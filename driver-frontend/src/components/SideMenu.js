@@ -1,7 +1,5 @@
 import React from "react";
 
-// NOTE: no LogoutButton import here; we call onLogout from props
-
 export default function SideMenu({
   open,
   onClose,
@@ -10,7 +8,7 @@ export default function SideMenu({
   isGuest = false,
   onCreateAccount,
   onSignIn,
-  onLogout, // <-- provided by App.handleLogout
+  onLogout, 
   userName = "User",
 }) {
   if (!open) return null;
