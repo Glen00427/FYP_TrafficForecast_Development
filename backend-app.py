@@ -13,10 +13,13 @@ app = Flask(__name__)
 CORS(app, resources={
     r"/*": {
         "origins": [
-            #"https://fyp-trafficforecast-development-driver.onrender.com",
+            "https://fyp-trafficforecast-development-driver.onrender.com",
             "https://curly-space-system-g4xw75qxrxq4fjj-3000.app.github.dev",
             "http://localhost:3000"
-        ]
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "supports_credentials": True
     }
 })
 
