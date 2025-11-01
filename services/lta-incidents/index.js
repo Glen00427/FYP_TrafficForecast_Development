@@ -5,10 +5,11 @@ const LTA_KEY = process.env.LTA_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "lta-incidents";
+const EXPIRATION_HOURS = 6;
 
 let lastTs = null;
 
-// Assign severity purely from `type`
+// 🔥 Assign severity purely from `type`
 function determineSeverity(type = "") {
   const t = type.toLowerCase();
 
@@ -44,14 +45,14 @@ async function saveToSupabase(incidents) {
 
   const payload = incidents.map((r) => ({
     type: r.Type || "",
+    severity: determineSeverity(r.Type), // ✅ Only from `type`
     message: r.Message || "",
-    severity: determineSeverity(r.Type), 
     latitude: r.Latitude ? parseFloat(r.Latitude) : null,
     longitude: r.Longitude ? parseFloat(r.Longitude) : null,
     ts: now.toISOString(),
   }));
 
-  console.log("Payload sample:", payload.slice(0, 2)); 
+  console.log("Payload sample:", payload.slice(0, 2)); // 👀 Check before sending
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
     method: "POST",
