@@ -4,7 +4,7 @@ import { supabase } from './lib/supabaseClient';
 export async function fetchIncidents() {
   const { data, error } = await supabase
     .from("lta-incidents")
-    .select("id, type, message, latitude, longitude, ts")
+    .select("id, type, message, severity, latitude, longitude, ts")
     .order("ts", { ascending: false });
 
   if (error) {
