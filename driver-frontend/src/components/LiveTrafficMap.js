@@ -57,7 +57,8 @@ async function getRoadName(lat, lng) {
 
 export default function LiveTrafficMap({ 
   routeGeometry = [], 
-  incidents = [] 
+  incidents = [],
+  isGuest = true
 }) {
   const mapRef = useRef(null);
   const path = useMemo(() => normalizePath(routeGeometry), [routeGeometry]);
