@@ -27,6 +27,7 @@ export async function fetchIncidents() {
       id: row.id,
       title: row.type,
       message: row.message,
+      severity: row.severity,
       lat: parseFloat(row.latitude),
       lng: parseFloat(row.longitude)
     }))
