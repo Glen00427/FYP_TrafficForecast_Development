@@ -153,23 +153,22 @@ export default function LiveTrafficMap({
           >
             <div style={{ maxWidth: "220px" }}>
               {(() => {
-                // Extract date/time from message
                 const msg = selectedIncident.message || "";
+        
+                // Extract date/time from message, e.g., "(26/10)13:10"
                 const match = msg.match(/\((\d{1,2}\/\d{1,2})\)(\d{2}:\d{2})/);
-
                 let dateTime = null;
                 let cleanMessage = msg;
-
+        
                 if (match) {
                   const [full, date, time] = match;
                   dateTime = `${date} ${time}`;
-                  // Remove the matched date/time part and any leading spaces
                   cleanMessage = msg.replace(full, "").trim();
                 }
-
+        
                 return (
                   <>
-                    {/* Date & time above everything */}
+                    {/* Date & Time */}
                     {dateTime && (
                       <p
                         style={{
@@ -181,20 +180,36 @@ export default function LiveTrafficMap({
                         {dateTime}
                       </p>
                     )}
-
-                    {/* Incident type */}
+        
+                    {/* Incident Type */}
                     <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
-
-                    {/* Road name ABOVE message */}
-                    {selectedIncident.roadName && (
+        
+                    {/* Severity */}
+                    {selectedIncident.severity && (
                       <p
-                        style={{ margin: "0 0 5px 0", fontStyle: "italic" }}
+                        style={{
+                          margin: "0 0 5px 0",
+                          fontWeight: "bold",
+                          color:
+                            selectedIncident.severity === "High"
+                              ? "red"
+                              : selectedIncident.severity === "Medium"
+                              ? "orange"
+                              : "green",
+                        }}
                       >
+                        Severity: {selectedIncident.severity}
+                      </p>
+                    )}
+        
+                    {/* Road Name */}
+                    {selectedIncident.roadName && (
+                      <p style={{ margin: "0 0 5px 0", fontStyle: "italic" }}>
                         {selectedIncident.roadName}
                       </p>
                     )}
-
-                    {/* Message below road name (cleaned) */}
+        
+                    {/* Message */}
                     <p style={{ margin: 0 }}>{cleanMessage}</p>
                   </>
                 );
