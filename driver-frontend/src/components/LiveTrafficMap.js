@@ -1,14 +1,14 @@
 //api key: AIzaSyDzxaLJiJgdKYs2WqTPrmeT2k8JoHTj8kk
 
 // driver-frontend/src/components/LiveTrafficMap.js
-import React, { useMemo, useRef, useCallback, useEffect, useState } from "react";
+import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import {
   GoogleMap,
   LoadScript,
   TrafficLayer,
   Polyline,
   Marker,
-  InfoWindow, // CHANGED
+  InfoWindow
 } from "@react-google-maps/api";
 
 const SG = { lat: 1.3521, lng: 103.8198 }; // Singapore center
@@ -42,18 +42,32 @@ function normalizePath(routeGeometry) {
     .filter(Boolean);
 }
 
-export default function LiveTrafficMap({
-  routeGeometry = [],
-  incidents = []
+async function getRoadName(lat, lng) {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+    );
+    const data = await res.json();
+    return data?.address?.road || "Unknown road";
+  } catch (err) {
+    console.error("Reverse geocode failed:", err);
+    return "Unknown road";
+  }
+}
+
+export default function LiveTrafficMap({ 
+  routeGeometry = [], 
+  incidents = [] 
 }) {
   const mapRef = useRef(null);
-  const [selectedIncident, setSelectedIncident] = useState(null); // CHANGED (added state)
   const path = useMemo(() => normalizePath(routeGeometry), [routeGeometry]);
 
+  const [selectedIncident, setSelectedIncident] = React.useState(null);
+  
   const onMapLoad = useCallback(
     (map) => {
       mapRef.current = map;
-
+      
       // If we have a route, fit bounds to it
       if (path.length > 1) {
         const bounds = new window.google.maps.LatLngBounds();
@@ -107,45 +121,87 @@ export default function LiveTrafficMap({
 
         {/* Optional incident markers */}
         {incidents.map((i) => {
-          const icon = // CHANGED
+          const icon =
             window.google && window.google.maps
               ? {
-                url: "./warning.png",
-                scaledSize: new window.google.maps.Size(30, 30),
-                anchor: new window.google.maps.Point(17, 34),
-              }
-              : null;
+                  url: "./warning.png",
+                  scaledSize: new window.google.maps.Size(30, 30),
+                  anchor: new window.google.maps.Point(17, 34),
+                }
+              : null; // wait until Google is ready
 
           return (
             <Marker
               key={i.id}
-              position={{ lat: i.latitude, lng: i.longitude }}
-              icon={icon} // CHANGED
-              onClick={() => setSelectedIncident(i)} // CHANGED
+              position={{ lat: i.lat, lng: i.lng }}
+              title={i.title}
+              icon={icon}
+              onClick={async () => {
+                const roadName = await getRoadName(i.lat, i.lng);
+                setSelectedIncident({ ...i, roadName });
+              }}
             />
           );
         })}
 
-        {selectedIncident && ( // CHANGED
+
+        {/* InfoWindow for selected incident */}
+        {selectedIncident && (
           <InfoWindow
-            position={{
-              lat: selectedIncident.latitude,
-              lng: selectedIncident.longitude,
-            }}
-            onCloseClick={() => setSelectedIncident(null)} // CHANGED
+            position={{ lat: selectedIncident.lat, lng: selectedIncident.lng }}
+            onCloseClick={() => setSelectedIncident(null)}
           >
-            <div style={{ maxWidth: "220px" }}> {/* CHANGED */}
-              <p style={{ margin: "0 0 5px 0", color: "#6b7280", fontSize: "0.85em" }}>
-                {new Date(selectedIncident.ts).toLocaleString()} {/* CHANGED */}
-              </p>
-              <h4 style={{ margin: "0 0 5px 0" }}>
-                {selectedIncident.type || "Traffic Incident"} {/* CHANGED */}
-              </h4>
-              <p style={{ margin: 0 }}>{selectedIncident.message}</p> {/* CHANGED */}
+            <div style={{ maxWidth: "220px" }}>
+              {(() => {
+                // Extract date/time from message
+                const msg = selectedIncident.message || "";
+                const match = msg.match(/\((\d{2}\/\d{2})\)(\d{2}:\d{2})/);
+
+                let dateTime = null;
+                let cleanMessage = msg;
+
+                if (match) {
+                  const [full, date, time] = match;
+                  dateTime = `${date} ${time}`;
+                  // Remove the matched date/time part and any leading spaces
+                  cleanMessage = msg.replace(full, "").trim();
+                }
+
+                return (
+                  <>
+                    {/* Date & time above everything */}
+                    {dateTime && (
+                      <p
+                        style={{
+                          margin: "0 0 5px 0",
+                          color: "#6b7280",
+                          fontSize: "0.85em",
+                        }}
+                      >
+                        {dateTime}
+                      </p>
+                    )}
+
+                    {/* Incident type */}
+                    <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
+
+                    {/* Road name ABOVE message */}
+                    {selectedIncident.roadName && (
+                      <p
+                        style={{ margin: "0 0 5px 0", fontStyle: "italic" }}
+                      >
+                        {selectedIncident.roadName}
+                      </p>
+                    )}
+
+                    {/* Message below road name (cleaned) */}
+                    <p style={{ margin: 0 }}>{cleanMessage}</p>
+                  </>
+                );
+              })()}
             </div>
           </InfoWindow>
         )}
-
       </GoogleMap>
     </LoadScript>
   );
