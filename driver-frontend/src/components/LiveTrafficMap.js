@@ -155,7 +155,7 @@ export default function LiveTrafficMap({
               {(() => {
                 // Extract date/time from message
                 const msg = selectedIncident.message || "";
-                const match = msg.match(/\((\d{2}\/\d{2})\)(\d{2}:\d{2})/);
+                const match = msg.match(/\((\d{1,2}\/\d{1,2})\)(\d{2}:\d{2})/);
 
                 let dateTime = null;
                 let cleanMessage = msg;
