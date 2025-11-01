@@ -199,7 +199,7 @@ export default function LiveTrafficMap({
                               : "green",
                         }}
                       >
-                        Severity: {selectedIncident.severity}
+                        {selectedIncident.severity}
                       </p>
                     )}
         
