@@ -8,6 +8,9 @@ on:
 jobs:
   update-incidents:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/lta-incidents
 
     steps:
       - name: Checkout repo
@@ -19,7 +22,6 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        working-directory: services/lta-incidents
         run: npm install
 
       - name: Run script
@@ -29,5 +31,4 @@ jobs:
           SUPABASE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlc3Njd3pyc3V5aXFkZWNjeXNtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc1NzEwOTMsImV4cCI6MjA3MzE0NzA5M30.5BRLFWRcKaQlNUpOPRwVjP51M3kXaDH4YadqwY5Qmx0
           SUPABASE_TABLE: lta-incidents
           EXPIRATION_HOURS: 6
-        working-directory: services/lta-incidents
         run: npm start
