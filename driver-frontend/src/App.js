@@ -381,6 +381,10 @@ export default function App() {
                   departTime: options?.departAt,
                 });
                 console.log("ML Predictions received:", result);
+
+                result.from = from; // Added 3 Nov
+                result.to = to; // Added 3 Nov
+
                 setPredictionResult(result);
                 setShowingRoute(false); // Reset when getting new prediction
                 setDisplayedPrediction(null);
