@@ -406,6 +406,153 @@ def health():
         'features': FEATS
     })
 
+@app.route('/current-congestion', methods=['GET'])
+def get_current_congestion():
+    """Get current top congested roads"""
+    try:
+        tbl = get_lta_traffic_speedbands()
+        
+        if tbl.empty:
+            return jsonify({'roads': []}), 200
+        
+        # Calculate congestion percentage for each road
+        congested_roads = []
+        
+        for _, row in tbl.iterrows():
+            speed = row.get('SpeedKMH_Est', 0)
+            max_speed = row.get('MaximumSpeed', 80)
+            road_name = row.get('RoadName', 'Unknown Road')
+            
+            # Calculate congestion (lower speed = higher congestion)
+            if max_speed > 0:
+                congestion_pct = int((1 - (speed / max_speed)) * 100)
+                congestion_pct = max(0, min(100, congestion_pct))  # Clamp 0-100
+                
+                if congestion_pct >= 30:  # Only show roads with >30% congestion
+                    congested_roads.append({
+                        'name': road_name,
+                        'congestion': congestion_pct,
+                        'speed': int(speed)
+                    })
+        
+        # Sort by congestion level (highest first)
+        congested_roads.sort(key=lambda x: x['congestion'], reverse=True)
+        
+        # Return top 5
+        return jsonify({
+            'roads': congested_roads[:5],
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        print(f"Error in current-congestion: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/forecast', methods=['POST'])
+def get_forecast():
+    """Get traffic forecast for next hour"""
+    try:
+        data = request.json
+        
+        if not data or 'from' not in data or 'to' not in data:
+            return jsonify({'error': 'Missing from/to locations'}), 400
+        
+        from_location = data['from']
+        to_location = data['to']
+        
+        # Get coordinates
+        try:
+            start_lat, start_lon = parse_coordinates(from_location)
+            end_lat, end_lon = parse_coordinates(to_location)
+        except ValueError as e:
+            return jsonify({'error': str(e)}), 400
+        
+        # Get route
+        osrm_routes = get_multiple_routes(start_lat, start_lon, end_lat, end_lon)
+        
+        if not osrm_routes or len(osrm_routes) == 0:
+            return jsonify({'error': 'No route found'}), 404
+        
+        # Get traffic data
+        tbl = get_lta_traffic_speedbands()
+        
+        if tbl.empty:
+            return jsonify({'error': 'No traffic data available'}), 503
+        
+        if model is None:
+            return jsonify({'error': 'Model not available'}), 503
+        
+        # Use the best route
+        route = osrm_routes[0]
+        route_linkids = map_route_to_linkids(route['coordinates'], tbl)
+        
+        if not route_linkids:
+            return jsonify({'error': 'Could not map route'}), 400
+        
+        features = aggregate_route_features(route_linkids, tbl)
+        
+        if features is None:
+            return jsonify({'error': 'Could not extract features'}), 400
+        
+        # Predict for now, +15min, +30min, +60min
+        predictions = []
+        base_hour = features['hour']
+        
+        time_offsets = [
+            {'label': 'Now', 'offset': 0},
+            {'label': '+15m', 'offset': 15},
+            {'label': '+30m', 'offset': 30},
+            {'label': '+60m', 'offset': 60}
+        ]
+        
+        for time_point in time_offsets:
+            # Adjust hour for time offset
+            adjusted_features = features.copy()
+            minutes_ahead = time_point['offset']
+            adjusted_hour = (base_hour + (minutes_ahead // 60)) % 24
+            adjusted_features['hour'] = adjusted_hour
+            
+            # Predict
+            X = pd.DataFrame([adjusted_features])[FEATS]
+            proba = model.predict_proba(X)[:, 1][0]
+            congestion_pct = int(proba * 100)
+            
+            # Determine status
+            if congestion_pct >= 60:
+                status = 'Heavy'
+            elif congestion_pct >= 40:
+                status = 'Moderate'
+            else:
+                status = 'Clear'
+            
+            predictions.append({
+                'label': time_point['label'],
+                'congestion': congestion_pct,
+                'status': status
+            })
+        
+        # Determine trend
+        first_congestion = predictions[0]['congestion']
+        last_congestion = predictions[-1]['congestion']
+        
+        if last_congestion > first_congestion + 15:
+            trend = "Traffic worsening - consider leaving soon"
+        elif last_congestion < first_congestion - 15:
+            trend = "Traffic improving"
+        else:
+            trend = "Traffic conditions stable"
+        
+        return jsonify({
+            'predictions': predictions,
+            'trend': trend
+        })
+        
+    except Exception as e:
+        print(f"Error in forecast: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print("="*60)
