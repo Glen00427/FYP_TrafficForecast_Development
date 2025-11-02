@@ -14,7 +14,7 @@ CORS(app, resources={
     r"/*": {
         "origins": [
             "https://fyp-trafficforecast-development-driver.onrender.com",
-            "https://curly-space-system-g4xw75qxrxq4fjj-3000.app.github.dev/",
+            "https://curly-space-system-g4xw75qxrxq4fjj-3000.app.github.dev",
             "http://localhost:3000"
         ]
     }
