@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import CongestionInfo from "./CongestionInfo";
 
-export default function RoutePreviewSheet({ onSubmit }) {
+export default function RoutePreviewSheet({ onSubmit, predictionData }) {
   // ---------- snap helpers ----------
   const getSnapPoints = () => {
     const vh = Math.max(window?.innerHeight || 0, 640);
@@ -45,7 +46,7 @@ export default function RoutePreviewSheet({ onSubmit }) {
 
   // Remove legacy global key (prevents leak)
   useEffect(() => {
-    try { localStorage.removeItem("rps:recent"); } catch {}
+    try { localStorage.removeItem("rps:recent"); } catch { }
   }, []);
 
   const normalizeArray = (arr) => {
@@ -69,7 +70,7 @@ export default function RoutePreviewSheet({ onSubmit }) {
       const raw = localStorage.getItem(userKey());
       const norm = normalizeArray(JSON.parse(raw || "[]"));
 
-      // De-dupe by label (case-insensitive), keep earliest item’s ts order
+      // De-dupe by label (case-insensitive), keep earliest item's ts order
       const seen = new Set();
       const uniq = [];
       for (const item of norm) {
@@ -158,7 +159,7 @@ export default function RoutePreviewSheet({ onSubmit }) {
     document.documentElement.classList.add("hide-map-fabs");
     startY.current = e.clientY ?? (e.touches?.[0]?.clientY || 0);
     startH.current = sheetHeight;
-    try { sheetRef.current?.setPointerCapture?.(e.pointerId); } catch {}
+    try { sheetRef.current?.setPointerCapture?.(e.pointerId); } catch { }
   }
   function onDrag(e) {
     if (!dragging.current) return;
@@ -207,6 +208,9 @@ export default function RoutePreviewSheet({ onSubmit }) {
   const title = "Route Preview";
   const headerIcon = "📡";
 
+  // Check if we should show CongestionInfo
+  const showCongestionInfo = predictionData != null;
+
   return (
     <div
       ref={sheetRef}
@@ -251,46 +255,52 @@ export default function RoutePreviewSheet({ onSubmit }) {
       )}
 
       <div className="rps-body">
-        {/* Recents */}
+        {/* Show CongestionInfo OR Recents */}
         {mode !== "form" && (
           <>
-            <div className="rps-recent-title">Recent</div>
-            <div className="rps-recent-list">
-              {!isAuthed && (
-                <div className="rps-recent-row is-last">
-                  <span className="rps-recent-ico">🕒</span>
-                  <div>
-                    <div className="rps-recent-title">No recent destinations</div>
-                    <div className="rps-recent-sub">Sign in to view your recent searches</div>
-                  </div>
-                </div>
-              )}
-
-              {isAuthed && recents.length === 0 && (
-                <div className="rps-recent-row is-last">
-                  <span className="rps-recent-ico">🕒</span>
-                  <div>
-                    <div className="rps-recent-title">No recent destinations</div>
-                    <div className="rps-recent-sub">Search a destination to get started</div>
-                  </div>
-                </div>
-              )}
-
-              {isAuthed &&
-                recents.map((item, i) => (
-                  <div
-                    key={`${item.label}-${item.ts}-${i}`}
-                    className={`rps-recent-row ${i === recents.length - 1 ? "is-last" : ""}`}
-                    onClick={() => handleRecentClick(item)}
-                  >
-                    <span className="rps-recent-ico">🕒</span>
-                    <div>
-                      <div className="rps-recent-title">{item.label}</div>
-                      <div className="rps-recent-sub">{fmtDate(item.ts)}</div>
+            {showCongestionInfo ? (
+              <CongestionInfo predictionData={predictionData} />
+            ) : (
+              <>
+                <div className="rps-recent-title">Recent</div>
+                <div className="rps-recent-list">
+                  {!isAuthed && (
+                    <div className="rps-recent-row is-last">
+                      <span className="rps-recent-ico">🕒</span>
+                      <div>
+                        <div className="rps-recent-title">No recent destinations</div>
+                        <div className="rps-recent-sub">Sign in to view your recent searches</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-            </div>
+                  )}
+
+                  {isAuthed && recents.length === 0 && (
+                    <div className="rps-recent-row is-last">
+                      <span className="rps-recent-ico">🕒</span>
+                      <div>
+                        <div className="rps-recent-title">No recent destinations</div>
+                        <div className="rps-recent-sub">Search a destination to get started</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {isAuthed &&
+                    recents.map((item, i) => (
+                      <div
+                        key={`${item.label}-${item.ts}-${i}`}
+                        className={`rps-recent-row ${i === recents.length - 1 ? "is-last" : ""}`}
+                        onClick={() => handleRecentClick(item)}
+                      >
+                        <span className="rps-recent-ico">🕒</span>
+                        <div>
+                          <div className="rps-recent-title">{item.label}</div>
+                          <div className="rps-recent-sub">{fmtDate(item.ts)}</div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </>
+            )}
           </>
         )}
 

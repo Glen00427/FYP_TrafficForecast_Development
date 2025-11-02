@@ -30,6 +30,8 @@ export default function App() {
   const [destination, setDestination] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [predictionResult, setPredictionResult] = useState(null);
+  const [showingRoute, setShowingRoute] = useState(false); // added 3 Nov
+  const [displayedPrediction, setDisplayedPrediction] = useState(null); // Added 3 Nov
 
   // auth & gate
   const [user, setUser] = useState(null);
@@ -189,7 +191,7 @@ export default function App() {
         window.removeEventListener("popstate", onPop);
       };
       window.addEventListener("popstate", onPop, { once: true });
-    } catch {}
+    } catch { }
   }
 
   function closeLearnGoBack() {
@@ -197,21 +199,21 @@ export default function App() {
     setAccountOpen(true);
     try {
       if (window.history.state?.view === "learn") window.history.back();
-    } catch {}
+    } catch { }
   }
 
   async function handleLogout() {
     try {
       const { doLogout } = await import("./components/logout");
       await doLogout();
-    } catch (_) {}
+    } catch (_) { }
 
     setUser(null);
     setActivePage("live");
     setMenuOpen(false);
     try {
       localStorage.removeItem("role");
-    } catch {}
+    } catch { }
     bumpMap();
   }
 
@@ -357,6 +359,7 @@ export default function App() {
           {/* Route Preview Sheet */}
           <RoutePreviewSheet
             isGuest={!user}
+            predictionData={showingRoute ? displayedPrediction : null}
             onSubmit={async (from, to, options) => {
               if (!from || !from.trim()) {
                 alert("Please enter a starting location");
@@ -379,6 +382,8 @@ export default function App() {
                 });
                 console.log("ML Predictions received:", result);
                 setPredictionResult(result);
+                setShowingRoute(false); // Reset when getting new prediction
+                setDisplayedPrediction(null);
               } catch (error) {
                 console.error("Prediction failed:", error);
                 alert("Could not get predictions. Check console.");
@@ -393,13 +398,13 @@ export default function App() {
         className={`page page-saved ${activePage === "saved" ? "is-active" : ""}`}
         aria-hidden={activePage !== "saved"}
       >
-      <SavedRoutes
-        key={user ? String(user.id ?? user.userid) : "guest"} 
-        userId={user ? Number(user.id ?? user.userid) : 0}
-        active={activePage === "saved"}                    
-        onClose={() => setActivePage("live")}
-       />
-    </section>
+        <SavedRoutes
+          key={user ? String(user.id ?? user.userid) : "guest"}
+          userId={user ? Number(user.id ?? user.userid) : 0}
+          active={activePage === "saved"}
+          onClose={() => setActivePage("live")}
+        />
+      </section>
 
       {/* PROFILE / NOTIFICATIONS PAGE */}
       <section
@@ -463,10 +468,16 @@ export default function App() {
       {predictionResult && (
         <PredictionDialog
           result={predictionResult}
-          onClose={() => setPredictionResult(null)}
+          onClose={() => {
+            setPredictionResult(null);
+            setShowingRoute(false);
+            setDisplayedPrediction(null);
+          }}
           onShowRoute={() => {
             if (predictionResult?.best?.route_coordinates) {
               setRoute({ geometry: predictionResult.best.route_coordinates });
+              setShowingRoute(true);
+              setDisplayedPrediction(predictionResult);
               setPredictionResult(null);
               setActivePage("live");
               const closeButton = document.querySelector(".rps-close");
@@ -475,7 +486,7 @@ export default function App() {
               alert("Route coordinates not available");
             }
           }}
-          user={user} // ✅ pass user down
+          user={user}
         />
       )}
     </div>
