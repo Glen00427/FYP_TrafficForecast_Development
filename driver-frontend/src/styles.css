@@ -4509,3 +4509,318 @@ button:not(:disabled):active {
   min-height: 100%;
   padding-bottom: 48px;
 }
+
+/* ===== Congestion Info Component (ci-*) ===== */
+
+/* Loading state */
+.congestion-info-loading {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  font-size: 32px;
+  margin-bottom: 10px;
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Main container */
+.congestion-info {
+  padding: 16px 0;
+}
+
+/* Section spacing */
+.ci-section {
+  margin-bottom: 20px;
+  padding: 0 4px;
+}
+
+.ci-title {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+  color: #111827;
+}
+
+.ci-no-data {
+  padding: 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+/* ===== High Congestion Roads ===== */
+.ci-roads {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ci-road-card {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border-left: 4px solid #d1d5db;
+  transition: all 0.15s ease;
+}
+
+.ci-road-card:hover {
+  background: #f3f4f6;
+}
+
+/* Color variants based on congestion level */
+.ci-road-card:has(.ci-road-percentage:contains('🔴')) {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.ci-road-card:has(.ci-road-percentage:contains('🟡')) {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.ci-road-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.ci-road-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.ci-road-name {
+  flex: 1;
+  font-weight: 700;
+  font-size: 15px;
+  color: #111827;
+}
+
+.ci-road-percentage {
+  background: #ef4444;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ci-road-details {
+  font-size: 13px;
+  color: #6b7280;
+  padding-left: 30px;
+}
+
+/* ===== Traffic Forecast ===== */
+.ci-forecast {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ci-forecast-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ci-forecast-time {
+  width: 55px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.ci-forecast-bar {
+  flex: 1;
+  height: 28px;
+  background: #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ci-forecast-fill {
+  height: 100%;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 14px;
+}
+
+.ci-forecast-fill.ok {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.ci-forecast-fill.warning {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.ci-forecast-fill.danger {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.ci-forecast-percent {
+  width: 50px;
+  font-weight: 800;
+  font-size: 15px;
+  color: #111827;
+  text-align: right;
+}
+
+.ci-forecast-status {
+  width: 90px;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.ci-forecast-alert {
+  background: #eff6ff;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dbeafe;
+}
+
+.ci-alert-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.ci-alert-text {
+  font-size: 14px;
+  color: #1e40af;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* ===== Model Factors ===== */
+.ci-factors {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ci-factor-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.ci-factor-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.ci-factor-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+/* ===== Dark Theme Support ===== */
+.app[data-theme="dark"] .congestion-info-loading {
+  color: #9ca3af;
+}
+
+.app[data-theme="dark"] .ci-title {
+  color: #e5e7eb;
+}
+
+.app[data-theme="dark"] .ci-no-data {
+  background: #0b1220;
+  color: #6b7280;
+}
+
+.app[data-theme="dark"] .ci-road-card {
+  background: #111827;
+  border-left-color: #374151;
+}
+
+.app[data-theme="dark"] .ci-road-card:hover {
+  background: #1f2937;
+}
+
+.app[data-theme="dark"] .ci-road-name {
+  color: #e5e7eb;
+}
+
+.app[data-theme="dark"] .ci-road-details {
+  color: #9ca3af;
+}
+
+.app[data-theme="dark"] .ci-forecast-bar {
+  background: #374151;
+}
+
+.app[data-theme="dark"] .ci-forecast-time,
+.app[data-theme="dark"] .ci-forecast-percent {
+  color: #e5e7eb;
+}
+
+.app[data-theme="dark"] .ci-forecast-status {
+  color: #9ca3af;
+}
+
+.app[data-theme="dark"] .ci-forecast-alert {
+  background: #1e3a8a;
+  border-color: #1e40af;
+}
+
+.app[data-theme="dark"] .ci-alert-text {
+  color: #93c5fd;
+}
+
+.app[data-theme="dark"] .ci-factor-row {
+  background: #111827;
+  border-color: #374151;
+}
+
+.app[data-theme="dark"] .ci-factor-label {
+  color: #9ca3af;
+}
+
+.app[data-theme="dark"] .ci-factor-value {
+  color: #e5e7eb;
+}
+
+/* ===== Responsive tweaks ===== */
+@media (max-width: 640px) {
+  .ci-forecast-time {
+    width: 45px;
+    font-size: 13px;
+  }
+
+  .ci-forecast-percent {
+    width: 45px;
+    font-size: 14px;
+  }
+
+  .ci-forecast-status {
+    width: 75px;
+    font-size: 12px;
+  }
+}
