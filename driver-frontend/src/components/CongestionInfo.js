@@ -56,10 +56,9 @@ export default function CongestionInfo({ predictionData }) {
 
     // Extract model factors from prediction data
     const modelFactors = predictionData?.best ? {
-        speed: predictionData.best.speed || 'N/A',
-        time: predictionData.best.hour ? `${predictionData.best.hour}:00` : 'N/A',
-        day: predictionData.best.dow !== undefined ?
-            ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][predictionData.best.dow] : 'N/A',
+        speed: Math.round(predictionData.best.SpeedKMH_Est || 0) + ' km/h',
+        time: new Date().toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' }),
+        day: new Date().toLocaleDateString('en-SG', { weekday: 'short' }),
         incidents: predictionData.best.incident_count || 0,
         segments: predictionData.best.link_ids_count || 0,
     } : null;
@@ -104,7 +103,7 @@ export default function CongestionInfo({ predictionData }) {
                                 <div className="ci-forecast-bar">
                                     <div
                                         className={`ci-forecast-fill ${pred.congestion >= 60 ? 'danger' :
-                                                pred.congestion >= 40 ? 'warning' : 'ok'
+                                            pred.congestion >= 40 ? 'warning' : 'ok'
                                             }`}
                                         style={{ width: `${pred.congestion}%` }}
                                     />
