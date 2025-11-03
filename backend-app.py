@@ -547,6 +547,7 @@ def get_forecast():
         return jsonify({
             'predictions': predictions,
             'trend': trend
+            'avg_speed': features.get('SpeedKMH_Est', 0) # added 3 Nov
         })
         
     except Exception as e:

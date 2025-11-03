@@ -56,8 +56,8 @@ export default function CongestionInfo({ predictionData }) {
 
     // Extract model factors from prediction data
     const modelFactors = predictionData?.best ? {
-        speed: predictionData.best.speed
-            ? `${Math.round(predictionData.best.speed)} km/h`
+        speed: forecastData?.avg_speed
+            ? `${Math.round(forecastData.avg_speed)} km/h`
             : 'N/A',
         time: new Date().toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' }),
         day: new Date().toLocaleDateString('en-SG', { weekday: 'short' }),
