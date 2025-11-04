@@ -210,6 +210,21 @@ export default function SavedRoutes({
               <button className={`sr-chip ${filter === "recent" ? "active" : ""}`} onClick={() => setFilter("recent")}>
                 Recent
               </button>
+              <button
+                type="button"
+                className="sr-add-btn"
+                title="Add a saved route"
+                aria-label="Add a saved route"
+                onClick={() => {
+                  if (onAddRoute) {
+                    onAddRoute();
+                  } else {
+                    setAddOpen(true);
+                  }
+                }}
+              >
+                +
+              </button>
             </div>
           </div>
 

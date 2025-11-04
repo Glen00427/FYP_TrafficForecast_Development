@@ -504,6 +504,35 @@ textarea {
   flex: 0 0 auto;
 }
 
+.sr-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 1px solid var(--border, #e6e8ef);
+  background: var(--panel, #fff);
+  color: var(--primary, #3b82f6);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.sr-add-btn:hover,
+.sr-add-btn:focus-visible {
+  border-color: var(--primary, #3b82f6);
+  background: rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.sr-add-btn:active {
+  transform: translateY(1px);
+}
+
 .sr-chip {
   --chip-bg: #fff;
   --chip-br: #e6e8ef;
