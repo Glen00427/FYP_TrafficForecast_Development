@@ -212,7 +212,7 @@ export default function SavedRoutes({
                 title="Add saved route"
                 aria-label="Add saved route"
               >
-                ➕ Add Route
+                ➕
               </button>
             </div>
           </div>
