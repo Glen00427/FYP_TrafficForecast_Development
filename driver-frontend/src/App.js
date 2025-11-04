@@ -393,6 +393,42 @@ export default function App() {
                 alert("Could not get predictions. Check console.");
               }
             }}
+            onNavigate={async (originLabel, destinationLabel, options) => {
+              const from = String(originLabel || "").trim();
+              const to = String(destinationLabel || "").trim();
+
+              if (!from) {
+                alert("Current location unavailable. Please allow access and try again.");
+                return;
+              }
+              if (!to) {
+                alert("Please enter a destination");
+                return;
+              }
+
+              try {
+                const result = await predictRoutes({
+                  from,
+                  to,
+                  departTime: options?.departAt,
+                });
+                console.log("Navigation predictions received:", result);
+
+                result.from = from;
+                result.to = to;
+                if (options?.originCoords) {
+                  result.originCoords = options.originCoords;
+                }
+
+                setPredictionResult(result);
+                setShowingRoute(false);
+                setDisplayedPrediction(null);
+              } catch (error) {
+                console.error("Navigation prediction failed:", error);
+                alert("Could not start navigation. Check console.");
+                throw error;
+              }
+            }}
           />
         </div>
       </section>

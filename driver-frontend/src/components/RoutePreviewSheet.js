@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CongestionInfo from "./CongestionInfo";
 
-export default function RoutePreviewSheet({ onSubmit, predictionData }) {
+export default function RoutePreviewSheet({ onSubmit, onNavigate, predictionData }) {
   // ---------- snap helpers ----------
   const getSnapPoints = () => {
     const vh = Math.max(window?.innerHeight || 0, 640);
@@ -32,6 +32,14 @@ export default function RoutePreviewSheet({ onSubmit, predictionData }) {
   // ---------- form state ----------
   const [fromValue, setFromValue] = useState("");
   const [toValue, setToValue] = useState("");
+
+  // ---------- navigation state ----------
+  const [navDestination, setNavDestination] = useState("");
+  const [navOriginCoords, setNavOriginCoords] = useState(null);
+  const [navOriginLabel, setNavOriginLabel] = useState("");
+  const [navOriginWarning, setNavOriginWarning] = useState(null);
+  const [navLocStatus, setNavLocStatus] = useState("idle");
+  const [navLocError, setNavLocError] = useState(null);
 
   // ---------- recents (per-user only) ----------
   const [recents, setRecents] = useState([]); // [{label, ts}]
@@ -189,6 +197,66 @@ export default function RoutePreviewSheet({ onSubmit, predictionData }) {
     []
   );
 
+  const reverseGeocode = useCallback(async ({ lat, lng }) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+        { headers: { "Accept-Language": "en" } }
+      );
+      if (!res.ok) throw new Error(`Reverse geocode failed (${res.status})`);
+      const data = await res.json();
+      const label = data?.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      setNavOriginLabel(label);
+      setNavOriginWarning(null);
+      setNavLocStatus("ready");
+    } catch (err) {
+      console.error("Reverse geocode failed:", err);
+      setNavOriginLabel(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      setNavOriginWarning("Using coordinates – address unavailable.");
+      setNavLocStatus("ready");
+    }
+  }, []);
+
+  const refreshOrigin = useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setNavLocStatus("error");
+      setNavLocError("Current location is not supported in this browser.");
+      setNavOriginCoords(null);
+      setNavOriginLabel("");
+      setNavOriginWarning(null);
+      return;
+    }
+
+    setNavLocStatus("loading");
+    setNavLocError(null);
+    setNavOriginWarning(null);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+        setNavOriginCoords(coords);
+        setNavLocStatus("resolving");
+        reverseGeocode(coords);
+      },
+      (err) => {
+        console.error("Geolocation failed:", err);
+        setNavLocStatus("error");
+        setNavLocError(err?.message || "Unable to detect current location.");
+        setNavOriginCoords(null);
+        setNavOriginLabel("");
+        setNavOriginWarning(null);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [reverseGeocode]);
+
+  useEffect(() => {
+    refreshOrigin();
+  }, [refreshOrigin]);
+
   // ---------- submit ----------
   function handleSubmit(e) {
     e.preventDefault();
@@ -196,6 +264,43 @@ export default function RoutePreviewSheet({ onSubmit, predictionData }) {
     const to = String(toValue || "").trim();
     if (to) saveRecent(to);
     onSubmit?.(from, to, { source: "sheet" });
+  }
+
+  function handleNavigationSubmit(e) {
+    e.preventDefault();
+    const destination = String(navDestination || "").trim();
+    if (!destination) {
+      alert("Please enter a destination to start navigation.");
+      return;
+    }
+
+    const originLabel = String(
+      navOriginLabel ||
+        (navOriginCoords
+          ? `${navOriginCoords.lat.toFixed(5)}, ${navOriginCoords.lng.toFixed(5)}`
+          : "")
+    ).trim();
+
+    if (!originLabel) {
+      alert("Current location unavailable. Please allow location access and try again.");
+      refreshOrigin();
+      return;
+    }
+
+    saveRecent(destination);
+
+    const maybePromise = onNavigate?.(originLabel, destination, {
+      source: "navigation",
+      originCoords: navOriginCoords,
+    });
+
+    if (maybePromise && typeof maybePromise.then === "function") {
+      maybePromise
+        .then(() => setNavDestination(""))
+        .catch(() => {});
+    } else {
+      setNavDestination("");
+    }
   }
 
   // clicking a recent -> open form & prefill "To"
@@ -333,20 +438,60 @@ export default function RoutePreviewSheet({ onSubmit, predictionData }) {
               </button>
             </form>
 
-            {/* Demo cards */}
-            <div className="rps-card">
-              <div className="rps-card-title">Route Preview</div>
-              <div className="rps-meta">
-                <div className="rps-meta-item">🕒 {preview.time}</div>
-                <div className="rps-meta-item">📍 {preview.distance}</div>
-              </div>
-              <div className="rps-alert rps-alert--amber">
-                <span className="rps-alert-ico">📈</span>
-                <div>
-                  <div className="rps-alert-title">Traffic Impact</div>
-                  <div className="rps-alert-text">{preview.traffic}</div>
+            {/* Navigation feature */}
+            <div className="rps-card rps-nav-card">
+              <div className="rps-card-title">Navigation</div>
+              <div className="rps-nav-origin" id="rps-nav-origin">
+                <div className="rps-nav-label">Origin</div>
+                <div className="rps-nav-value">
+                  {navLocStatus === "loading" || navLocStatus === "resolving"
+                    ? "Detecting your current location…"
+                    : navLocStatus === "error"
+                    ? "Current location unavailable"
+                    : navOriginLabel ||
+                      (navOriginCoords
+                        ? `${navOriginCoords.lat.toFixed(4)}, ${navOriginCoords.lng.toFixed(4)}`
+                        : "Detecting your current location…")}
                 </div>
+                {navOriginWarning && (
+                  <div className="rps-nav-note">{navOriginWarning}</div>
+                )}
+                {navLocStatus === "error" && navLocError && (
+                  <div className="rps-nav-error">{navLocError}</div>
+                )}
+                <button
+                  type="button"
+                  className="rps-btn rps-btn-secondary rps-nav-refresh"
+                  onClick={refreshOrigin}
+                  disabled={navLocStatus === "loading" || navLocStatus === "resolving"}
+                >
+                  {navLocStatus === "loading" || navLocStatus === "resolving"
+                    ? "Locating…"
+                    : "Use current location"}
+                </button>
               </div>
+
+              <form className="rps-nav-form" onSubmit={handleNavigationSubmit}>
+                <label className="rps-label" htmlFor="rps-nav-destination">
+                  Destination
+                </label>
+                <input
+                  id="rps-nav-destination"
+                  name="navigation-destination"
+                  className="rps-input rps-input--lg"
+                  placeholder="Enter destination…"
+                  value={navDestination}
+                  onChange={(e) => setNavDestination(e.target.value)}
+                  aria-describedby="rps-nav-origin"
+                />
+                <button
+                  className="rps-btn rps-btn-primary rps-btn--lg"
+                  type="submit"
+                  disabled={navLocStatus === "loading" || navLocStatus === "resolving"}
+                >
+                  Start Navigation
+                </button>
+              </form>
             </div>
 
             <div className="rps-subtitle">Location Search</div>
