@@ -137,23 +137,6 @@ export default function RoutePreviewSheet({
   const openExpanded = () => setSheet({ mode: "expanded", sheetHeight: snaps.EXPANDED });
   const openForm = () => setSheet({ mode: "form", sheetHeight: snaps.FULL });
 
-  useEffect(() => {
-    if (!prefillValues) return;
-
-    const from = String(prefillValues.from ?? "");
-    const to = String(prefillValues.to ?? "");
-
-    setFromValue(from);
-    setToValue(to);
-
-    if (from || to) {
-      openForm();
-      setTimeout(() => document.getElementById("rps-from")?.focus?.(), 0);
-    }
-
-    onPrefillConsumed?.();
-  }, [prefillValues, onPrefillConsumed]);
-
   // Publish height for FAB layout
   useEffect(() => {
     document.documentElement.style.setProperty("--rps-height", `${sheetHeight}px`);
