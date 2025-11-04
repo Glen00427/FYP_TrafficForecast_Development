@@ -445,6 +445,14 @@ export default function App() {
           key={user ? String(user.id ?? user.userid) : "guest"}
           userId={user ? Number(user.id ?? user.userid) : 0}
           active={activePage === "saved"}
+          onNavigate={(route) => {
+            if (!route) return;
+            setRoutePrefill({
+              from: route.from ?? "",
+              to: route.to ?? "",
+            });
+            setActivePage("live");
+          }}
           onClose={() => setActivePage("live")}
         />
       </section>

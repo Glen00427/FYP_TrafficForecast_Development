@@ -726,6 +726,111 @@ textarea {
   border-radius: 16px;
 }
 
+.sr-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-overlay, 99990);
+  padding: 24px;
+}
+
+.sr-modal {
+  background: var(--panel, #fff);
+  color: var(--text, #0f172a);
+  border-radius: 20px;
+  box-shadow: 0 32px 80px rgba(15, 23, 42, 0.32);
+  width: min(480px, 100%);
+  max-height: calc(100vh - 80px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: var(--z-overlay-card, 99991);
+}
+
+.sr-modal-header {
+  padding: 24px 28px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sr-modal-header h2 {
+  margin: 0;
+  flex: 1;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.sr-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  color: inherit;
+}
+
+.sr-modal-close:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.sr-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 28px 28px;
+}
+
+.sr-modal-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.8);
+}
+
+.sr-modal-label input {
+  border: 1px solid var(--border, #d5d9e5);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  background: rgba(248, 250, 252, 0.9);
+  color: inherit;
+}
+
+.sr-modal-label input:focus {
+  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline-offset: 1px;
+}
+
+.sr-modal-error {
+  background: rgba(248, 113, 113, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.sr-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.sr-modal-actions .sr-btn {
+  min-width: 120px;
+  justify-content: center;
+}
+
 /* Responsive */
 @media (max-width: 960px) {
   .sr-grid {

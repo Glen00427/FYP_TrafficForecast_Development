@@ -40,6 +40,11 @@ export default function SavedRoutes({
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all"); // all | fav | rec | recent
+  const [addOpen, setAddOpen] = useState(false);
+  const [addFrom, setAddFrom] = useState("");
+  const [addTo, setAddTo] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
+  const [addError, setAddError] = useState("");
 
   const uid = Number(userId) || 0;
 
@@ -205,15 +210,6 @@ export default function SavedRoutes({
               <button className={`sr-chip ${filter === "recent" ? "active" : ""}`} onClick={() => setFilter("recent")}>
                 Recent
               </button>
-              <button
-                type="button"
-                className="sr-add-btn"
-                onClick={() => onAddRoute?.()}
-                title="Add saved route"
-                aria-label="Add saved route"
-              >
-                ➕
-              </button>
             </div>
           </div>
 
@@ -311,6 +307,132 @@ export default function SavedRoutes({
           </div>
         </aside>
       </div>
+
+      {addOpen && (
+        <div className="sr-modal-backdrop" role="presentation">
+          <div className="sr-modal" role="dialog" aria-modal="true" aria-labelledby="sr-add-title">
+            <div className="sr-modal-header">
+              <h2 id="sr-add-title">Save a new route</h2>
+              <button
+                type="button"
+                className="sr-modal-close"
+                onClick={() => {
+                  if (addSaving) return;
+                  setAddOpen(false);
+                }}
+                aria-label="Close add route dialog"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              className="sr-modal-form"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (addSaving) return;
+
+                const from = addFrom.trim();
+                const to = addTo.trim();
+
+                if (!from || !to) {
+                  setAddError("Enter both origin and destination.");
+                  return;
+                }
+                if (!uid) {
+                  setAddError("Please sign in to save routes.");
+                  return;
+                }
+
+                setAddSaving(true);
+                setAddError("");
+
+                const now = new Date();
+                const createdAt = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+                  .toISOString()
+                  .slice(0, 10);
+
+                try {
+                  const { error } = await supabase
+                    .from("savedRoutes")
+                    .insert([
+                      {
+                        user_id: uid,
+                        origin: from,
+                        destination: to,
+                        duration: 0,
+                        distance: "",
+                        created_at: createdAt,
+                      },
+                    ])
+                    .select()
+                    .single();
+
+                  if (error) {
+                    throw error;
+                  }
+
+                  setAddOpen(false);
+                  setAddFrom("");
+                  setAddTo("");
+                  fetchRoutes();
+                  try {
+                    window.dispatchEvent(new Event("route:saved"));
+                  } catch (err) {
+                    console.warn("route:saved dispatch failed", err);
+                  }
+                } catch (err) {
+                  console.error("Add saved route failed", err);
+                  setAddError(err?.message || "Failed to save route.");
+                } finally {
+                  setAddSaving(false);
+                }
+              }}
+            >
+              <label className="sr-modal-label">
+                <span>Origin</span>
+                <input
+                  type="text"
+                  value={addFrom}
+                  onChange={(e) => setAddFrom(e.target.value)}
+                  placeholder="Enter starting point"
+                  required
+                  autoFocus
+                />
+              </label>
+
+              <label className="sr-modal-label">
+                <span>Destination</span>
+                <input
+                  type="text"
+                  value={addTo}
+                  onChange={(e) => setAddTo(e.target.value)}
+                  placeholder="Enter destination"
+                  required
+                />
+              </label>
+
+              {addError && <div className="sr-modal-error">{addError}</div>}
+
+              <div className="sr-modal-actions">
+                <button
+                  type="button"
+                  className="sr-btn sr-btn-ghost"
+                  onClick={() => {
+                    if (addSaving) return;
+                    setAddOpen(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="sr-btn sr-btn-primary" disabled={addSaving}>
+                  {addSaving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
