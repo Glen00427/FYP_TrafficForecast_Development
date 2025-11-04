@@ -32,6 +32,7 @@ export default function App() {
   const [predictionResult, setPredictionResult] = useState(null);
   const [showingRoute, setShowingRoute] = useState(false); // added 3 Nov
   const [displayedPrediction, setDisplayedPrediction] = useState(null); // Added 3 Nov
+  const [routePrefill, setRoutePrefill] = useState(null);
 
   // auth & gate
   const [user, setUser] = useState(null);
@@ -360,6 +361,8 @@ export default function App() {
           <RoutePreviewSheet
             isGuest={!user}
             predictionData={showingRoute ? displayedPrediction : null}
+            prefillValues={routePrefill}
+            onPrefillConsumed={() => setRoutePrefill(null)}
             onSubmit={async (from, to, options) => {
               if (!from || !from.trim()) {
                 alert("Please enter a starting location");
@@ -442,6 +445,14 @@ export default function App() {
           key={user ? String(user.id ?? user.userid) : "guest"}
           userId={user ? Number(user.id ?? user.userid) : 0}
           active={activePage === "saved"}
+          onNavigate={(route) => {
+            if (!route) return;
+            setRoutePrefill({
+              from: route.from ?? "",
+              to: route.to ?? "",
+            });
+            setActivePage("live");
+          }}
           onClose={() => setActivePage("live")}
         />
       </section>

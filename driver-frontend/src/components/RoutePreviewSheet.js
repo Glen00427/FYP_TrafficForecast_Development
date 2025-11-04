@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CongestionInfo from "./CongestionInfo";
 
-export default function RoutePreviewSheet({ onSubmit, onNavigate, predictionData }) {
+export default function RoutePreviewSheet({
+  onSubmit,
+  onNavigate,
+  predictionData,
+  prefillValues,
+  onPrefillConsumed,
+}) {
   // ---------- snap helpers ----------
   const getSnapPoints = () => {
     const vh = Math.max(window?.innerHeight || 0, 640);
@@ -130,6 +136,23 @@ export default function RoutePreviewSheet({ onSubmit, onNavigate, predictionData
   const collapse = () => setSheet({ mode: "collapsed", sheetHeight: snaps.COLLAPSED });
   const openExpanded = () => setSheet({ mode: "expanded", sheetHeight: snaps.EXPANDED });
   const openForm = () => setSheet({ mode: "form", sheetHeight: snaps.FULL });
+
+  useEffect(() => {
+    if (!prefillValues) return;
+
+    const from = String(prefillValues.from ?? "");
+    const to = String(prefillValues.to ?? "");
+
+    setFromValue(from);
+    setToValue(to);
+
+    if (from || to) {
+      openForm();
+      setTimeout(() => document.getElementById("rps-from")?.focus?.(), 0);
+    }
+
+    onPrefillConsumed?.();
+  }, [prefillValues, onPrefillConsumed]);
 
   // Publish height for FAB layout
   useEffect(() => {
