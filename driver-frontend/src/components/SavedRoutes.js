@@ -31,6 +31,7 @@ export default function SavedRoutes({
   routes: initialRoutes,
   onStartTrip,
   onNavigate,
+  onAddRoute,
   onDelete,
   onClose,
 }) {
@@ -52,7 +53,7 @@ export default function SavedRoutes({
     setError("");
 
     const { data, error } = await supabase
-      .from("savedRoutes") 
+      .from("savedRoutes")
       .select("id, user_id, origin, destination, duration, distance, created_at")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
@@ -103,10 +104,10 @@ export default function SavedRoutes({
   }, [fetchRoutes]);
 
   useEffect(() => {
-  const prev = document.body.style.overflow;
-  document.body.style.overflow = "auto";
-  return () => { document.body.style.overflow = prev; };
-}, []);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "auto";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   // client-only toggles
   const toggleFav = (r) =>
@@ -203,6 +204,15 @@ export default function SavedRoutes({
               </button>
               <button className={`sr-chip ${filter === "recent" ? "active" : ""}`} onClick={() => setFilter("recent")}>
                 Recent
+              </button>
+              <button
+                type="button"
+                className="sr-add-btn"
+                onClick={() => onAddRoute?.()}
+                title="Add saved route"
+                aria-label="Add saved route"
+              >
+                ➕ Add Route
               </button>
             </div>
           </div>
