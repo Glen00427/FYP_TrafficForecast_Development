@@ -6,9 +6,9 @@ import requests
 from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.decomposition import TruncatedSVD
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, f1_score
 from supabase import create_client, Client
 
 # === Step 1. Supabase setup ===
@@ -112,45 +112,86 @@ print(df.head())
 
 # === Feature engineering ===
 text_embeddings = model_text.encode(df["message"].tolist())
-# Reduce embedding dimensions to avoid overfitting
-svd = TruncatedSVD(n_components=100, random_state=42)
-text_embeddings_reduced = svd.fit_transform(text_embeddings)
-
-features = np.hstack([
-    text_embeddings_reduced,
-    df[["speed_band", "type_score", "type_match_score", "uncertainty_score"]].values
-])
+numeric_features = df[["speed_band", "type_score", "type_match_score", "uncertainty_score"]].values
 
 # === Labels ===
 le = LabelEncoder()
 labels = le.fit_transform(df["label"])  # 'verified' / 'false'
 
 # === Train/test split ===
-X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.3, random_state=42)
+X_train_idx, X_test_idx, y_train, y_test = train_test_split(
+    np.arange(len(df)), labels, test_size=0.3, random_state=42, stratify=labels
+)
 
-# === Train RandomForest with cross-validation ===
-clf = RandomForestClassifier(n_estimators=150, max_depth=15, min_samples_leaf=5, random_state=42)
+# === Train RandomForest with cross-validation (no leakage) ===
 cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-cv_scores = cross_val_score(clf, features, labels, cv=cv, scoring='f1_weighted')
+cv_scores = []
+
+for train_idx, val_idx in cv.split(text_embeddings, labels):
+    svd_cv = TruncatedSVD(n_components=100, random_state=42)
+    svd_cv.fit(text_embeddings[train_idx])
+
+    X_train_cv = np.hstack([
+        svd_cv.transform(text_embeddings[train_idx]),
+        numeric_features[train_idx]
+    ])
+
+    X_val_cv = np.hstack([
+        svd_cv.transform(text_embeddings[val_idx]),
+        numeric_features[val_idx]
+    ])
+
+    clf_cv = RandomForestClassifier(n_estimators=150, max_depth=15, min_samples_leaf=5, random_state=42)
+    clf_cv.fit(X_train_cv, labels[train_idx])
+
+    val_pred = clf_cv.predict(X_val_cv)
+    cv_scores.append(f1_score(labels[val_idx], val_pred, average="weighted"))
+
+cv_scores = np.array(cv_scores)
 print("5-Fold CV weighted F1 scores:", cv_scores)
 print("Mean F1 score:", cv_scores.mean())
 
-# Fit on full dataset for predictions
-clf.fit(features, labels)
-print("✅ Model trained on full dataset.")
+# === Hold-out evaluation ===
+svd_eval = TruncatedSVD(n_components=100, random_state=42)
+svd_eval.fit(text_embeddings[X_train_idx])
 
-# === Quick evaluation ===
-y_pred = clf.predict(X_test)
+X_train_eval = np.hstack([
+    svd_eval.transform(text_embeddings[X_train_idx]),
+    numeric_features[X_train_idx]
+])
+
+X_test_eval = np.hstack([
+    svd_eval.transform(text_embeddings[X_test_idx]),
+    numeric_features[X_test_idx]
+])
+
+clf_eval = RandomForestClassifier(n_estimators=150, max_depth=15, min_samples_leaf=5, random_state=42)
+clf_eval.fit(X_train_eval, y_train)
+
+y_pred = clf_eval.predict(X_test_eval)
 
 report = classification_report(
-    y_test,       # true labels
-    y_pred,       # predicted labels
-    target_names=le.classes_,  # to show 'false' and 'verified'
-    digits=2      # display 2 decimal places
+    y_test,
+    y_pred,
+    target_names=le.classes_,
+    digits=2
 )
 
-print("=== Model Evaluation ===")
+print("=== Model Evaluation (Hold-out) ===")
 print(report)
+
+# === Train final model on full dataset for inference ===
+svd = TruncatedSVD(n_components=100, random_state=42)
+svd.fit(text_embeddings)
+
+features_full = np.hstack([
+    svd.transform(text_embeddings),
+    numeric_features
+])
+
+clf = RandomForestClassifier(n_estimators=150, max_depth=15, min_samples_leaf=5, random_state=42)
+clf.fit(features_full, labels)
+print("✅ Model trained on full dataset for inference.")
 
 # === Analyze new report ===
 def analyze_report(description, road_name, incident_type, live_speed=None):
