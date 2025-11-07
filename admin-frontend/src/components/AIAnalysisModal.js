@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import LocalAIReportAnalyzer from "../lib/localAIReportAnalyzer";
 
 const DEFAULT_API_URL =
   process.env.REACT_APP_ADMIN_API_URL ||
@@ -7,23 +8,48 @@ const DEFAULT_API_URL =
 
 function AIAnalysisModal({ incident, onClose }) {
   const apiUrl = useMemo(() => DEFAULT_API_URL, []);
+  const localAnalyzer = useMemo(() => new LocalAIReportAnalyzer(), []);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [notice, setNotice] = useState(null);
 
   useEffect(() => {
     if (!incident) return;
 
     const controller = new AbortController();
     const fetchAnalysis = async () => {
-      if (!apiUrl) {
-        setError("AI analysis API is not configured.");
-        return;
-      }
-
       setLoading(true);
       setError(null);
       setAnalysis(null);
+      setNotice(null);
+
+      const runLocalAnalysis = (message) => {
+        if (controller.signal.aborted) return;
+
+        if (message) {
+          setNotice(message);
+        }
+
+        try {
+          const localResult = localAnalyzer.analyse(incident);
+          setAnalysis(localResult);
+        } catch (localError) {
+          console.error("Local AI analysis error", localError);
+          setError(
+            localError.message ||
+            "Unable to generate AI insights for this incident."
+          );
+        }
+      };
+
+      if (!apiUrl) {
+        runLocalAnalysis(
+          "AI service not configured – generated insights using local heuristics."
+        );
+        setLoading(false);
+        return;
+      }
 
       try {
         const response = await fetch(`${apiUrl}/ai-analysis`, {
@@ -49,7 +75,9 @@ function AIAnalysisModal({ incident, onClose }) {
       } catch (err) {
         if (err.name === "AbortError") return;
         console.error("AI analysis error", err);
-        setError(err.message || "Unexpected error while analysing report.");
+        runLocalAnalysis(
+          "Remote AI service unavailable – generated insights using local heuristics."
+        );
       } finally {
         setLoading(false);
       }
@@ -186,6 +214,7 @@ function AIAnalysisModal({ incident, onClose }) {
 
     return (
       <>
+        {notice && <div className="analysis-notice">{notice}</div>}
         {renderScores()}
         {renderConfidence()}
         {renderRedFlags()}
