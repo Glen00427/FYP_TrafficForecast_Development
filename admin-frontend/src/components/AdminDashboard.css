@@ -91,11 +91,9 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--primary-color),
-    var(--primary-light)
-  );
+  background: linear-gradient(90deg,
+      var(--primary-color),
+      var(--primary-light));
 }
 
 .stat-card:hover {
@@ -156,11 +154,9 @@
 }
 
 .tab.active {
-  background: linear-gradient(
-    135deg,
-    var(--primary-color),
-    var(--primary-light)
-  );
+  background: linear-gradient(135deg,
+      var(--primary-color),
+      var(--primary-light));
   color: white;
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
   transform: translateY(-1px);
@@ -250,12 +246,10 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--primary-light),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      var(--primary-light),
+      transparent);
 }
 
 .incident-header {
@@ -294,10 +288,12 @@
   background: linear-gradient(135deg, var(--success-color), #34d399);
   color: white;
 }
+
 .severity-tag.medium {
   background: linear-gradient(135deg, var(--warning-color), #fbbf24);
   color: white;
 }
+
 .severity-tag.heavy {
   background: linear-gradient(135deg, var(--danger-color), #f87171);
   color: white;
@@ -350,11 +346,9 @@
 
 /* Buttons */
 .btn-primary {
-  background: linear-gradient(
-    135deg,
-    var(--primary-color),
-    var(--primary-light)
-  );
+  background: linear-gradient(135deg,
+      var(--primary-color),
+      var(--primary-light));
   color: white;
   border: none;
   padding: 12px 24px;
@@ -367,11 +361,9 @@
 }
 
 .btn-primary:hover {
-  background: linear-gradient(
-    135deg,
-    var(--primary-dark),
-    var(--primary-color)
-  );
+  background: linear-gradient(135deg,
+      var(--primary-dark),
+      var(--primary-color));
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
 }
@@ -409,11 +401,9 @@
 }
 
 .btn-success:hover {
-  background: linear-gradient(
-    135deg,
-    var(--success-dark),
-    var(--success-color)
-  );
+  background: linear-gradient(135deg,
+      var(--success-dark),
+      var(--success-color));
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
@@ -451,11 +441,9 @@
 }
 
 .btn-warning:hover {
-  background: linear-gradient(
-    135deg,
-    var(--warning-dark),
-    var(--warning-color)
-  );
+  background: linear-gradient(135deg,
+      var(--warning-dark),
+      var(--warning-color));
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
 }
@@ -494,6 +482,7 @@
     opacity: 0;
     transform: translateY(-30px) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -578,10 +567,113 @@
   letter-spacing: 0.5px;
 }
 
+.score-subtext {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .red-flags,
 .recommendation,
 .reasoning {
   margin-bottom: 24px;
+}
+
+.analysis-meta,
+.quality-signals,
+.feature-summary {
+  margin-bottom: 24px;
+  padding: 18px;
+  background: var(--bg-primary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px var(--shadow-color);
+}
+
+.analysis-meta h4,
+.quality-signals h4,
+.feature-summary h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+}
+
+.confidence-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.quality-signals ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  list-style: disc;
+}
+
+.feature-summary ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.confidence-list li,
+.feature-summary ul li {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.confidence-label {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.confidence-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-warning {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--warning-color);
+}
+
+.no-flags {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.feature-label {
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.feature-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.analysis-placeholder,
+.analysis-error {
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px dashed var(--border-color);
+  background: rgba(59, 130, 246, 0.05);
+  color: var(--text-secondary);
+}
+
+.analysis-error {
+  color: var(--danger-color);
+  border-color: rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.08);
 }
 
 .red-flags h4,
@@ -784,19 +876,23 @@
 }
 
 .status-badge-active {
-  background-color: #10b981; /* Green */
+  background-color: #10b981;
+  /* Green */
   color: white;
 }
 
 .status-badge-banned {
-  background-color: #ef4444; /* Red */
+  background-color: #ef4444;
+  /* Red */
   color: white;
 }
 
 .status-badge-inactive {
-  background-color: #6b7280; /* Grey */
+  background-color: #6b7280;
+  /* Grey */
   color: white;
 }
+
 .user-actions {
   display: flex;
   gap: 8px;
@@ -874,6 +970,7 @@
   color: var(--text-secondary);
   font-weight: 600;
 }
+
 /* Analytics */
 .analytics-tab {
   display: flex;
@@ -904,11 +1001,9 @@
 }
 
 .time-filters button.active {
-  background: linear-gradient(
-    135deg,
-    var(--primary-color),
-    var(--primary-light)
-  );
+  background: linear-gradient(135deg,
+      var(--primary-color),
+      var(--primary-light));
   color: white;
   border-color: var(--primary-color);
   box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
@@ -1486,10 +1581,12 @@
 
 /* Loading Animation */
 @keyframes pulse {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.7;
   }
@@ -1553,6 +1650,7 @@ textarea:focus-visible {
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -1625,7 +1723,7 @@ textarea:focus-visible {
   color: #6b7280;
 }
 
-.role-option input[type="radio"]:checked + .role-info .role-name {
+.role-option input[type="radio"]:checked+.role-info .role-name {
   color: #3b82f6;
 }
 
