@@ -1,5 +1,8 @@
+// components/AuthGate.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import BannedDialog from "./BannedDialog";
+import AppealForm from "./AppealForm";
 
 export default function AuthGate({
   appName = "SG Traffic Forecast",
@@ -13,6 +16,11 @@ export default function AuthGate({
   const [loading, setLoading] = useState(false);
   const [authErr, setAuthErr] = useState("");
   const emailRef = useRef(null);
+
+  // banned flow
+  const [bannedRow, setBannedRow] = useState(null);
+  const [bannedOpen, setBannedOpen] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -29,6 +37,13 @@ export default function AuthGate({
     return e;
   }, [email, password]);
 
+  function resetForm() {
+    setSubmitted(false);
+    setLoading(false);
+    setAuthErr("");
+    setPassword("");
+  }
+
   async function handleSignIn(ev) {
     ev.preventDefault();
     setSubmitted(true);
@@ -41,7 +56,7 @@ export default function AuthGate({
     try {
       setLoading(true);
 
-      // emails are normalized, so direct equality is fine
+      // normalize by email
       const { data, error } = await supabase
         .from("users")
         .select("*")
@@ -59,15 +74,26 @@ export default function AuthGate({
         return;
       }
 
+      // accept either `status` or `banned` column
+      const rawStatus =
+        (data.status ?? data.banned ?? "").toString().trim().toLowerCase();
+
+      if (rawStatus === "banned") {
+        // open banned dialog and block login
+        setBannedRow(data);
+        setBannedOpen(true);
+        return;
+      }
+
       const uid = data.id ?? data.userid ?? data.user_id ?? "local";
 
       onAuthed?.({
         id: uid,
-        userid: data.userid ?? null, // ← missing comma fixed
+        userid: data.userid ?? null,
         name: data.name ?? "",
         email: data.email ?? emailNorm,
         phone: data.phone ?? "",
-        role: "user",
+        role: data.role ?? "user",
       });
     } catch (e) {
       console.error("AuthGate exception:", e);
@@ -78,80 +104,114 @@ export default function AuthGate({
   }
 
   return (
-    <div className="gate-backdrop">
-      <div className="gate-card">
-        <button className="gate-close" aria-label="Close" disabled>
-          ✕
-        </button>
-        <div className="gate-logo" aria-hidden>
-          🚗
-        </div>
-        <h1 className="gate-title">Welcome to {appName}</h1>
-        <p className="gate-sub">Sign in to continue</p>
-
-        <form className="gate-form" onSubmit={handleSignIn}>
-          <label className="usf-label" htmlFor="gate-email">
-            Email
-          </label>
-          <input
-            id="gate-email"
-            ref={emailRef}
-            className="usf-input"
-            type="email"
-            placeholder="Enter email..."
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
-          {submitted && errs.email && (
-            <div className="usf-error">{errs.email}</div>
-          )}
-
-          <label className="usf-label" htmlFor="gate-password">
-            Password
-          </label>
-          <input
-            id="gate-password"
-            className="usf-input"
-            type="password"
-            placeholder="Enter password..."
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-          {submitted && errs.password && (
-            <div className="usf-error">{errs.password}</div>
-          )}
-
-          {authErr && <div className="usf-error">{authErr}</div>}
-
-          <button
-            type="submit"
-            className="usf-btn usf-btn-primary"
-            disabled={loading}
-          >
-            {loading ? "Signing in..." : "Sign In"}
+    <>
+      <div className="gate-backdrop">
+        <div className="gate-card">
+          <button className="gate-close" aria-label="Close" disabled>
+            ✕
           </button>
-        </form>
+          <div className="gate-logo" aria-hidden>
+            🚗
+          </div>
+          <h1 className="gate-title">Welcome to {appName}</h1>
+          <p className="gate-sub">Sign in to continue</p>
 
-        <div className="gate-signup">
-          Need an account?{" "}
-          <button className="gate-link" onClick={onSignUp}>
-            Sign up
+          <form className="gate-form" onSubmit={handleSignIn}>
+            <label className="usf-label" htmlFor="gate-email">
+              Email
+            </label>
+            <input
+              id="gate-email"
+              ref={emailRef}
+              className="usf-input"
+              type="email"
+              placeholder="Enter email..."
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+            />
+            {submitted && errs.email && (
+              <div className="usf-error">{errs.email}</div>
+            )}
+
+            <label className="usf-label" htmlFor="gate-password">
+              Password
+            </label>
+            <input
+              id="gate-password"
+              className="usf-input"
+              type="password"
+              placeholder="Enter password..."
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+            />
+            {submitted && errs.password && (
+              <div className="usf-error">{errs.password}</div>
+            )}
+
+            {authErr && <div className="usf-error">{authErr}</div>}
+
+            <button
+              type="submit"
+              className="usf-btn usf-btn-primary"
+              disabled={loading}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+          </form>
+
+          <div className="gate-signup">
+            Need an account?{" "}
+            <button className="gate-link" onClick={onSignUp}>
+              Sign up
+            </button>
+          </div>
+
+          <div className="gate-divider">
+            <span>OR</span>
+          </div>
+
+          <button className="gate-guest-btn" onClick={onGuest}>
+            <span className="gate-guest-ico" aria-hidden>
+              👤
+            </span>
+            Continue as Guest User
           </button>
         </div>
-
-        <div className="gate-divider">
-          <span>OR</span>
-        </div>
-
-        <button className="gate-guest-btn" onClick={onGuest}>
-          <span className="gate-guest-ico" aria-hidden>
-            👤
-          </span>
-          Continue as Guest User
-        </button>
       </div>
-    </div>
+
+      {/* Banned dialog */}
+      <BannedDialog
+        open={bannedOpen}
+        onClose={() => {
+          setBannedOpen(false);
+          setAppealOpen(false);
+          setBannedRow(null);
+          resetForm(); // return to sign-in state
+        }}
+        onAppeal={() => {
+          setBannedOpen(false);
+          setAppealOpen(true);
+        }}
+      />
+
+      {/* Appeal form */}
+      <AppealForm
+        open={appealOpen}
+        userRow={bannedRow}
+        onClose={() => {
+          setAppealOpen(false);
+          setBannedRow(null);
+          resetForm();
+        }}
+        onSubmitted={() => {
+          alert("Your appeal has been submitted. Our team will review it.");
+          setAppealOpen(false);
+          setBannedRow(null);
+          resetForm();
+        }}
+      />
+    </>
   );
 }

@@ -957,7 +957,6 @@ textarea {
   font-size: 18px;
 }
 
-.rif-form {}
 
 .rif-row {
   display: flex;
@@ -5058,3 +5057,36 @@ button:not(:disabled):active {
     font-size: 12px;
   }
 }
+
+.gate-backdrop,
+.gate-backdrop * {
+  cursor: default !important;
+}
+
+.gate-close,
+.gate-card .usf-btn,
+.gate-card .sm-user-pill {
+  cursor: pointer !important;
+}
+
+.gate-card,
+.gate-card * {
+  -webkit-user-drag: none;
+}
+
+.ban-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.sm-user-pill.is-ghost { 
+  background: #e5e7eb;
+  color: #111827;
+  border-color: #d1d5db;
+}
+
+.sm-user-pill.is-ghost:hover { filter: none; }
+
