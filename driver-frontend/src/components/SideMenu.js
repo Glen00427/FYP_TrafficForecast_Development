@@ -12,6 +12,8 @@ export default function SideMenu({
   onSignIn,
   onLogout,
   userName = "User",
+  userIdProp = null,       // <-- new
+  userEmailProp = "",      // <-- new
 }) {
   if (!open) return null;
 
@@ -21,16 +23,7 @@ export default function SideMenu({
   };
   const nudgeToAuth = () => (onSignIn ? onSignIn() : onCreateAccount?.());
 
-  const appUser =
-    (typeof window !== "undefined" && window.__APP_USER) || null;
-  const userId = appUser?.id ?? appUser?.userid ?? null;
-
-  const [inboxOpen, setInboxOpen] = useState(false);
-  const [loadingInbox, setLoadingInbox] = useState(false);
-
-  const [rejectedIncidents, setRejectedIncidents] = useState([]);
-  const [appealsByIncident, setAppealsByIncident] = useState({});
-
+  // ---------- helpers ----------
   const keyS = (v) => String(v ?? "");
   const keyN = (v) => {
     const n = Number(v);
@@ -38,33 +31,79 @@ export default function SideMenu({
   };
   const normStatus = (s) => String(s ?? "").trim().toLowerCase();
 
-  async function loadRejectedAndAppeals() {
-    if (!userId) return;
+  // Resolve the numeric users.id we store in incident_report.user_id
+  async function resolveDbUserId() {
+    // 1) Prefer explicit prop from App
+    if (typeof userIdProp === "number") return userIdProp;
+    if (typeof userIdProp === "string" && /^\d+$/.test(userIdProp)) {
+      return parseInt(userIdProp, 10);
+    }
 
-    // 1) Get all incidents for user, then filter by status in JS (case-insensitive)
-    const { data: inc, error: incErr } = await supabase
-      .from("incident_report")
-      .select(
-        "id, user_id, status, incidentType, location, createdAt, reason"
-      )
-      .eq("user_id", Number(userId))
-      .order("createdAt", { ascending: false })
-      .limit(200);
+    // 2) Fall back to lookup by email
+    const email = (userEmailProp || "").trim().toLowerCase();
+    if (email) {
+      const { data, error } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (!error && data?.id) return data.id;
+    }
 
-    if (incErr) {
-      console.error("Inbox load error:", incErr);
+    return null; // we can't resolve
+  }
+
+  // ---------- state ----------
+  const [resolvedUserId, setResolvedUserId] = useState(null);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [loadingInbox, setLoadingInbox] = useState(false);
+
+  const [rejectedIncidents, setRejectedIncidents] = useState([]);
+  const [appealsByIncident, setAppealsByIncident] = useState({});
+
+  // resolve numeric id when menu opens
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!open || isGuest) return;
+      const id = await resolveDbUserId();
+      if (alive) {
+        setResolvedUserId(id);
+        console.log("[Inbox] using user_id =", id); // debug
+      }
+    })();
+    return () => { alive = false; };
+  }, [open, isGuest, userIdProp, userEmailProp]);
+
+  // core loader
+  async function loadRejectedAndAppeals(userIdForQuery) {
+    if (!userIdForQuery) {
+      console.warn("[Inbox] No resolved user id; skipping query.");
       setRejectedIncidents([]);
       setAppealsByIncident({});
       return;
     }
 
-    const allMine = Array.isArray(inc) ? inc : [];
-    const rejectedOnly = allMine.filter(
-      (r) => normStatus(r.status) === "rejected"
-    );
+    // 1) rejected incidents for this user
+    const { data: inc, error: incErr } = await supabase
+      .from("incident_report")
+      .select("id, user_id, status, incidentType, location, createdAt, reason")
+      .eq("user_id", userIdForQuery)
+      .eq("status", "rejected")
+      .order("createdAt", { ascending: false })
+      .limit(200);
+
+    if (incErr) {
+      console.error("Inbox load error (incidents):", incErr);
+      setRejectedIncidents([]);
+      setAppealsByIncident({});
+      return;
+    }
+    const rejectedOnly = Array.isArray(inc) ? inc : [];
+    console.log("[Inbox] rejected incidents count =", rejectedOnly.length); // debug
     setRejectedIncidents(rejectedOnly);
 
-    // 2) Latest appeals for those incidents (ANY author)
+    // 2) latest appeal per incident
     const ids = rejectedOnly.map((r) => r.id).filter((x) => x != null);
     if (!ids.length) {
       setAppealsByIncident({});
@@ -80,16 +119,17 @@ export default function SideMenu({
       .order("created_at", { ascending: false });
 
     if (apErr) {
-      console.error("Appeals load error:", apErr);
+      console.error("Inbox load error (appeals):", apErr);
       setAppealsByIncident({});
       return;
     }
 
+    console.log("[Inbox] appeals rows =", Array.isArray(aps) ? aps.length : 0); // debug
     const latestMap = {};
     (aps || []).forEach((a) => {
       const ks = keyS(a.incident_id);
       if (!latestMap[ks]) {
-        latestMap[ks] = a; // newest first due to order()
+        latestMap[ks] = a; // newest-first
         const kn = keyN(a.incident_id);
         if (kn !== null) latestMap[kn] = a;
       }
@@ -97,33 +137,34 @@ export default function SideMenu({
     setAppealsByIncident(latestMap);
   }
 
+  // load once on open (badge immediately)
   useEffect(() => {
-    if (!open || !userId) return;
-    loadRejectedAndAppeals();
-  }, [open, userId]);
+    if (!open || !resolvedUserId || isGuest) return;
+    loadRejectedAndAppeals(resolvedUserId);
+  }, [open, resolvedUserId, isGuest]);
 
+  // refresh when Inbox expands
   useEffect(() => {
-    if (!inboxOpen || !userId) return;
+    if (!inboxOpen || !resolvedUserId || isGuest) return;
     let cancelled = false;
     (async () => {
       try {
         setLoadingInbox(true);
-        await loadRejectedAndAppeals();
+        await loadRejectedAndAppeals(resolvedUserId);
       } finally {
         if (!cancelled) setLoadingInbox(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [inboxOpen, userId]);
+    return () => { cancelled = true; };
+  }, [inboxOpen, resolvedUserId, isGuest]);
 
+  // appeal compose
   const [appealFor, setAppealFor] = useState(null);
   const [appealMsg, setAppealMsg] = useState("");
   const [appealSubmitting, setAppealSubmitting] = useState(false);
 
   async function submitIncidentAppeal() {
-    if (!appealFor || !userId) return;
+    if (!appealFor || !resolvedUserId) return;
     const body = (appealMsg || "").trim();
     if (!body) return alert("Please write your appeal message.");
 
@@ -131,7 +172,7 @@ export default function SideMenu({
       setAppealSubmitting(true);
       const { error } = await supabase.from("appeals").insert([
         {
-          user_id: Number(userId),
+          user_id: resolvedUserId,
           incident_id: appealFor.id,
           appeal_type: "incident_rejection_appeal",
           message: body,
@@ -147,15 +188,13 @@ export default function SideMenu({
       alert("Your appeal has been submitted.");
       setAppealFor(null);
       setAppealMsg("");
-      await loadRejectedAndAppeals();
+      await loadRejectedAndAppeals(resolvedUserId);
     } finally {
       setAppealSubmitting(false);
     }
   }
 
-  // Build display list:
-  // Case 1: rejected incident with NO appeal
-  // Case 2: rejected incident with latest appeal.status == 'rejected'
+  // two-case display
   const displayItems = useMemo(() => {
     const latestFor = (row) =>
       appealsByIncident[row.id] ?? appealsByIncident[keyS(row.id)];
@@ -173,7 +212,6 @@ export default function SideMenu({
   }, [rejectedIncidents, appealsByIncident]);
 
   const inboxCount = displayItems.length;
-
   const incidentTitle = (row) =>
     row?.incidentType
       ? `${row.incidentType}${row.location ? " · " + row.location : ""}`
@@ -181,6 +219,7 @@ export default function SideMenu({
   const incidentWhen = (row) =>
     row?.createdAt ? new Date(row.createdAt).toLocaleString() : "";
 
+  // ---------- UI ----------
   return (
     <div
       className="sm-backdrop"
@@ -190,7 +229,7 @@ export default function SideMenu({
       aria-label="Side menu"
     >
       <aside className="sm-panel sm-panel--new" onClick={(e) => e.stopPropagation()}>
-        <button className="sm-close" aria-label="Close" title="Close" onClick={onClose}>
+        <button className="sm-close" aria-label="Close" title="Close" onClick={onClose} type="button">
           ✕
         </button>
 
@@ -202,21 +241,23 @@ export default function SideMenu({
               <div className="sm-avatar">👤</div>
               <div className="sm-user-main">
                 <div className="sm-user-name">Guest User</div>
-                <button className="sm-user-pill" onClick={() => onSignIn?.()}>Log In</button>
+                <button className="sm-user-pill" onClick={() => onSignIn?.()} type="button">
+                  Log In
+                </button>
               </div>
             </div>
 
             <nav className="sm-nav" aria-label="Navigation">
-              <button className={"sm-nav-item " + (activePage === "live" ? "is-active" : "")} onClick={() => go("live")}>
+              <button className={"sm-nav-item " + (activePage === "live" ? "is-active" : "")} onClick={() => go("live")} type="button">
                 <span className="sm-nav-ico">🧭</span> Plan Route
               </button>
-              <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock">
+              <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock" type="button">
                 <span className="sm-nav-ico">⭐</span> Saved Route &amp; Favourites <span className="sm-lock">🔒</span>
               </button>
-              <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock">
+              <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock" type="button">
                 <span className="sm-nav-ico">⚙️</span> Settings <span className="sm-lock">🔒</span>
               </button>
-              <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock">
+              <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock" type="button">
                 <span className="sm-nav-ico">✉️</span> Inbox <span className="sm-lock">🔒</span>
               </button>
             </nav>
@@ -228,26 +269,33 @@ export default function SideMenu({
               <div className="sm-user-main">
                 <div className="sm-user-name">Hello {userName}</div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button className="sm-user-pill" onClick={() => go("profile")}>View Profile</button>
-                  <button className="sm-user-pill" onClick={() => onLogout?.()} title="Log out">Log out</button>
+                  <button className="sm-user-pill" onClick={() => go("profile")} type="button">View Profile</button>
+                  <button className="sm-user-pill" onClick={() => onLogout?.()} title="Log out" type="button">Log out</button>
                 </div>
               </div>
             </div>
 
             <nav className="sm-nav" aria-label="Navigation">
-              <button className={"sm-nav-item " + (activePage === "live" ? "is-active" : "")} onClick={() => go("live")} title="Plan Route">
+              <button className={"sm-nav-item " + (activePage === "live" ? "is-active" : "")} onClick={() => go("live")} title="Plan Route" type="button">
                 <span className="sm-nav-ico">📡</span> Plan Route
               </button>
-              <button className={"sm-nav-item " + (activePage === "saved" ? "is-active" : "")} onClick={() => go("saved")}>
+              <button className={"sm-nav-item " + (activePage === "saved" ? "is-active" : "")} onClick={() => go("saved")} type="button">
                 <span className="sm-nav-ico">⭐</span> Saved Route &amp; Favourites
               </button>
-              <button className={"sm-nav-item " + (activePage === "profile" ? "is-active" : "")} onClick={() => go("profile")}>
+              <button className={"sm-nav-item " + (activePage === "profile" ? "is-active" : "")} onClick={() => go("profile")} type="button">
                 <span className="sm-nav-ico">⚙️</span> Settings
               </button>
-              <button className={"sm-nav-item " + (inboxOpen ? "is-active" : "")} onClick={() => setInboxOpen((v) => !v)} title="Inbox">
+              <button
+                className={"sm-nav-item " + (inboxOpen ? "is-active" : "")}
+                onClick={() => setInboxOpen((v) => !v)}
+                title="Inbox"
+                type="button"
+              >
                 <span className="sm-nav-ico">✉️</span>
                 Inbox
-                {!!inboxCount && <span className="sm-badge" aria-label={`${inboxCount} items`}>{inboxCount}</span>}
+                {!!inboxCount && (
+                  <span className="sm-badge" aria-label={`${inboxCount} items`}>{inboxCount}</span>
+                )}
               </button>
             </nav>
 
@@ -267,8 +315,7 @@ export default function SideMenu({
                     <ul className="sm-list" style={{ marginTop: 8 }}>
                       {displayItems.map((row) => {
                         const latest =
-                          appealsByIncident[row.id] ??
-                          appealsByIncident[keyS(row.id)];
+                          appealsByIncident[row.id] ?? appealsByIncident[keyS(row.id)];
                         const appealRejected =
                           !!latest && normStatus(latest.status) === "rejected";
 
@@ -282,21 +329,16 @@ export default function SideMenu({
                                   : row?.reason || "Your incident report was rejected."}
                               </div>
                               {row.createdAt && (
-                                <div className="sm-list-when">
-                                  {incidentWhen(row)}
-                                </div>
+                                <div className="sm-list-when">{new Date(row.createdAt).toLocaleString()}</div>
                               )}
                             </div>
                             <div className="sm-list-cta">
-                              {/* Case 1 only: show Appeal button when no appeal exists */}
                               {!appealRejected && !latest && (
                                 <button
                                   className="sm-user-pill"
-                                  onClick={() => {
-                                    setAppealFor(row);
-                                    setAppealMsg("");
-                                  }}
+                                  onClick={() => { setAppealFor(row); setAppealMsg(""); }}
                                   title="Submit an appeal"
+                                  type="button"
                                 >
                                   Appeal
                                 </button>
@@ -313,6 +355,7 @@ export default function SideMenu({
           </>
         )}
 
+        {/* Appeal modal */}
         {Boolean(appealFor) && (
           <div
             className="gate-backdrop"
@@ -322,48 +365,33 @@ export default function SideMenu({
               if (e.target === e.currentTarget) setAppealFor(null);
             }}
           >
-            {(() => {
-              const item = appealFor || {};
-              const title = item?.incidentType
-                ? `${item.incidentType}${item?.location ? " · " + item.location : ""}`
-                : `Incident #${item?.id ?? "?"}`;
+            <div className="gate-card" onClick={(e) => e.stopPropagation()} draggable={false}>
+              <button type="button" className="gate-close" aria-label="Close" onClick={() => setAppealFor(null)}>✕</button>
+              <div className="gate-logo" aria-hidden>📝</div>
+              <h2 className="gate-title">Appeal Incident Rejection</h2>
+              <p className="gate-sub" style={{ marginBottom: 8 }}>
+                {appealFor?.incidentType
+                  ? `${appealFor.incidentType}${appealFor?.location ? " · " + appealFor.location : ""}`
+                  : `Incident #${appealFor?.id ?? "?"}`}
+              </p>
 
-              return (
-                <div className="gate-card" onClick={(e) => e.stopPropagation()} draggable={false}>
-                  <button type="button" className="gate-close" aria-label="Close" onClick={() => setAppealFor(null)}>
-                    ✕
-                  </button>
+              <label className="usf-label" htmlFor="inb-appeal-msg">Message</label>
+              <textarea
+                id="inb-appeal-msg"
+                className="usf-input"
+                rows={6}
+                placeholder="Explain why this incident should be reconsidered…"
+                value={appealMsg}
+                onChange={(e) => setAppealMsg(e.target.value)}
+              />
 
-                  <div className="gate-logo" aria-hidden>📝</div>
-                  <h2 className="gate-title">Appeal Incident Rejection</h2>
-                  <p className="gate-sub" style={{ marginBottom: 8 }}>{title}</p>
-
-                  <label className="usf-label" htmlFor="inb-appeal-msg">Message</label>
-                  <textarea
-                    id="inb-appeal-msg"
-                    className="usf-input"
-                    rows={6}
-                    placeholder="Explain why this incident should be reconsidered…"
-                    value={appealMsg}
-                    onChange={(e) => setAppealMsg(e.target.value)}
-                  />
-
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    <button type="button" className="sm-user-pill" onClick={() => setAppealFor(null)}>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="sm-user-pill"
-                      disabled={appealSubmitting}
-                      onClick={submitIncidentAppeal}
-                    >
-                      {appealSubmitting ? "Submitting…" : "Submit Appeal"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button type="button" className="sm-user-pill" onClick={() => setAppealFor(null)}>Cancel</button>
+                <button type="button" className="sm-user-pill" disabled={appealSubmitting} onClick={submitIncidentAppeal}>
+                  {appealSubmitting ? "Submitting…" : "Submit Appeal"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </aside>

@@ -285,6 +285,9 @@ export default function App() {
         onCreateAccount={() => setAccountOpen(true)}
         onSignIn={() => setSignInOpen(true)}
         onLogout={handleLogout}
+        userName={user?.name || "User"}  
+        userIdProp={user?.id ?? user?.userid ?? null}    
+        userEmailProp={(user?.email || "").toLowerCase()}
       />
 
       {/* LIVE MAP PAGE */}
