@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "../supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import ApproveAppealModal from "./ApproveAppealModal";
 import RejectAppealModal from "./RejectAppealModal";
-import "./AppealsTab.css";
 
 function AppealsTab({ onLogAction }) {
   const [appeals, setAppeals] = useState([]);
