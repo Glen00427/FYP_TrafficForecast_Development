@@ -276,6 +276,9 @@ export default function App() {
 
   // ===== NORMAL APP =====
   return (
+    <div
+      className="phone-wrapper"
+    >
     <div className="app" data-theme={theme}>
       <SideMenu
         open={menuOpen}
@@ -301,6 +304,7 @@ export default function App() {
             destination={destination}
             theme={theme}
             incidents={incidents}
+            isGuest={!user}
           />
           <div className="map-overlays-tl">
             <FloatingMenuButton onOpenMenu={openMenu} />
@@ -321,7 +325,8 @@ export default function App() {
             onCancel={() => setIncidentOpen(false)}
             onSubmit={async (form) => {
               try {
-                await saveIncidentReport({ form, user });
+                const newIncident = await saveIncidentReport({ form, user });
+                setIncidents((prev) => [...prev, newIncident]); 
                 setIncidentOpen(false);
                 setSubmitOpen(true);
               } catch (e) {
@@ -540,6 +545,7 @@ export default function App() {
           user={user}
         />
       )}
+    </div>
     </div>
   );
 }
