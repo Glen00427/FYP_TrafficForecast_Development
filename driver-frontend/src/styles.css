@@ -14,6 +14,16 @@ body,
   text-rendering: optimizeLegibility;
 }
 
+.phone-wrapper {
+  width: 375px;
+  height: 812px;
+  margin: 0 auto;
+  overflow: hidden;
+  position: relative;
+  transform: scale(0.8); /* adjust to fit your screen */
+  transform-origin: top left;
+}
+
 :root {
   --waze-blue: #3584e4;
   --waze-dark-blue: #2563eb;
