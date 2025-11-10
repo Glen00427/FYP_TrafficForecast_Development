@@ -4,8 +4,9 @@ import AIAnalysisModal from "./AIAnalysisModal";
 import ApproveModal from "./ApproveModal";
 import RejectModal from "./RejectModal";
 import AddTagsModal from "./AddTagsModal";
+import RetractIncidentModal from "./RetractIncidentModal";
 
-function IncidentsTab({ incidents, onUpdateIncident }) {
+function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedIncident, setSelectedIncident] = useState(null);
@@ -13,6 +14,7 @@ function IncidentsTab({ incidents, onUpdateIncident }) {
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [showTags, setShowTags] = useState(false);
+  const [showRetract, setShowRetract] = useState(false);
 
   // Local state for incidents to allow immediate updates
   const [localIncidents, setLocalIncidents] = useState(incidents);
@@ -42,39 +44,97 @@ function IncidentsTab({ incidents, onUpdateIncident }) {
     setShowTags(true);
   };
 
+  const handleRetract = (incident) => {
+    console.log("↩️ Retract Decision clicked for:", incident);
+    setSelectedIncident(incident);
+    setShowRetract(true);
+  };
+  
+
   const handleApproveIncident = async (tags = []) => {
     if (selectedIncident) {
-      // Update local state immediately - change status to "approved"
-      setLocalIncidents((prev) =>
-        prev.map((incident) =>
-          incident.id === selectedIncident.id
-            ? { ...incident, status: "approved", tags }
-            : incident
-        )
-      );
+      try {
+        console.log(
+          "🟢 Approving incident:",
+          selectedIncident.id,
+          "with tags:",
+          tags
+        );
 
-      // Update database
-      await onUpdateIncident(selectedIncident.id, "approved", tags);
+        const updatedIncident = await onUpdateIncident(
+          selectedIncident.id,
+          "approved",
+          tags
+        );
 
-      setShowApprove(false);
+        if (updatedIncident) {
+          console.log("✅ Incident approved successfully");
+
+          // LOG AUDIT ACTION
+          if (onLogAction) {
+            await onLogAction(
+              "incident_approve",
+              `Approved incident report #${selectedIncident.id} at ${selectedIncident.location}`,
+              `Tags: ${tags.join(", ")}`,
+              null, // targetUserId
+              selectedIncident.id // targetIncidentId
+            );
+          }
+        } else {
+          throw new Error("Failed to update incident in database");
+        }
+
+        setShowApprove(false);
+        setSelectedIncident(null);
+      } catch (error) {
+        console.error("❌ Error approving incident:", error);
+        alert("Failed to approve incident. Please try again.");
+      }
     }
   };
 
-  const handleRejectIncident = async (reason) => {
+  const handleRejectIncident = async (reason, tags = []) => {
     if (selectedIncident) {
-      // Update local state immediately - change status to "rejected"
-      setLocalIncidents((prev) =>
-        prev.map((incident) =>
-          incident.id === selectedIncident.id
-            ? { ...incident, status: "rejected" }
-            : incident
-        )
-      );
+      try {
+        console.log(
+          "🔴 Rejecting incident:",
+          selectedIncident.id,
+          "Reason:",
+          reason,
+          "Tags:",
+          tags
+        );
 
-      // Update database
-      await onUpdateIncident(selectedIncident.id, "rejected");
+        const updatedIncident = await onUpdateIncident(
+          selectedIncident.id,
+          "rejected",
+          tags,
+          reason
+        );
 
-      setShowReject(false);
+        if (updatedIncident) {
+          console.log("✅ Incident rejected successfully with reason:", reason);
+
+          // LOG AUDIT ACTION
+          if (onLogAction) {
+            await onLogAction(
+              "incident_reject",
+              `Rejected incident report #${selectedIncident.id} at ${selectedIncident.location}`,
+              `Reason: ${reason} | Tags: ${tags.join(", ")}`,
+              null, // targetUserId
+              selectedIncident.id // targetIncidentId
+            );
+          }
+        } else {
+          throw new Error("Failed to update incident in database");
+        }
+
+        setShowReject(false);
+        setSelectedIncident(null);
+      } catch (error) {
+        console.error("❌ Error rejecting incident:", error);
+        alert("Failed to reject incident. Please try again.");
+      }
     }
   };
 
@@ -95,6 +155,48 @@ function IncidentsTab({ incidents, onUpdateIncident }) {
       );
 
       setShowTags(false);
+    }
+  };
+
+  const handleRetractIncident = async () => {
+    if (selectedIncident) {
+      try {
+        console.log(
+          "↩️ Retracting decision for incident:",
+          selectedIncident.id
+        );
+
+        // Reset the incident to pending status and clear verification data
+        const updatedIncident = await onUpdateIncident(
+          selectedIncident.id,
+          "pending",
+          [], // Clear tags or keep existing?
+          null // Clear rejection reason
+        );
+
+        if (updatedIncident) {
+          console.log("✅ Decision retracted successfully");
+
+          // LOG AUDIT ACTION
+          if (onLogAction) {
+            await onLogAction(
+              "incident_retract",
+              `Retracted decision for incident report #${selectedIncident.id}`,
+              `Previous status: ${selectedIncident.status} | Reset to pending`,
+              null, // targetUserId
+              selectedIncident.id // targetIncidentId
+            );
+          }
+        } else {
+          throw new Error("Failed to retract decision in database");
+        }
+
+        setShowRetract(false);
+        setSelectedIncident(null);
+      } catch (error) {
+        console.error("❌ Error retracting decision:", error);
+        alert("Failed to retract decision. Please try again.");
+      }
     }
   };
 
@@ -177,6 +279,7 @@ function IncidentsTab({ incidents, onUpdateIncident }) {
               onApprove={handleApprove}
               onReject={handleReject}
               onAddTags={handleAddTags}
+              onRetract={handleRetract}
             />
           ))
         ) : (
@@ -217,6 +320,14 @@ function IncidentsTab({ incidents, onUpdateIncident }) {
           incident={selectedIncident}
           onClose={() => setShowTags(false)}
           onAddTags={handleAddTagsToIncident}
+        />
+      )}
+
+      {showRetract && selectedIncident && (
+        <RetractIncidentModal
+          incident={selectedIncident}
+          onClose={() => setShowRetract(false)}
+          onConfirm={handleRetractIncident}
         />
       )}
     </div>

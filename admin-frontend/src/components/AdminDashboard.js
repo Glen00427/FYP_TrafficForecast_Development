@@ -5,14 +5,12 @@ import IncidentsTab from "./IncidentsTab";
 import UsersTab from "./UsersTab";
 import AnalyticsTab from "./AnalyticsTab";
 import AppealsTab from "./AppealsTab";
-import BulkActionsTab from "./BulkActionsTab";
 import AuditLogsTab from "./AuditLogsTab";
 import ExportTab from "./ExportTab";
 import { supabase } from "../lib/supabaseClient";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("home");
-  const [selectedIncidents, setSelectedIncidents] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({
@@ -27,13 +25,16 @@ export default function AdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [debugInfo, setDebugInfo] = useState("");
 
+  // Use the actual logged-in admin ID
+  const currentAdminId = user?.userid;
+
+  // Tabs without Bulk Actions
   const tabs = [
     "Home",
     "Incidents",
     "Users",
     "Analytics",
     "Appeals",
-    "Bulk Actions",
     "Audit Logs",
     "Export",
   ];
@@ -94,8 +95,7 @@ export default function AdminDashboard() {
       // Update last updated timestamp
       setLastUpdated(new Date());
       setDebugInfo(
-        `✅ Success: ${usersData?.length || 0} users, ${
-          incidentsData?.length || 0
+        `✅ Success: ${usersData?.length || 0} users, ${incidentsData?.length || 0
         } incidents`
       );
     } catch (error) {
@@ -176,6 +176,43 @@ export default function AdminDashboard() {
 
   const clearSelection = () => {
     setSelectedIncidents([]);
+  };
+
+  // ADD THIS NEW FUNCTION - Place it after calculateStats but before updateIncidentStatus
+  const logAuditAction = async (
+    actionType,
+    description,
+    details = null,
+    targetUserId = null,
+    targetIncidentId = null
+  ) => {
+    try {
+      console.log("📝 Logging audit action:", { actionType, description });
+
+      const { data, error } = await supabase
+        .from("audit_logs")
+        .insert({
+          admin_id: currentAdminId,
+          action_type: actionType,
+          target_user_id: targetUserId,
+          target_incident_id: targetIncidentId,
+          description: description,
+          details: details,
+          created_at: new Date().toISOString(),
+        })
+        .select();
+
+      if (error) {
+        console.error("❌ Supabase insert error:", error);
+        return false;
+      }
+
+      console.log("✅ Audit action logged successfully:", data);
+      return true;
+    } catch (error) {
+      console.error("❌ Unexpected error in audit logger:", error);
+      return false;
+    }
   };
 
   // Function to update incident status in Supabase
@@ -327,10 +364,18 @@ export default function AdminDashboard() {
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <h1>Admin Dashboard</h1>
+        <div className="header-left">
+          <h1>Admin Dashboard</h1>
+          <div className="user-info">
+            Welcome, <strong>{user?.name}</strong> ({user?.role})
+          </div>
+        </div>
         <div className="header-info">
           <button onClick={handleManualRefresh} className="btn-outline">
             Refresh Data
+          </button>
+          <button onClick={onLogout} className="btn-outline logout-btn">
+            Logout
           </button>
           <div className="last-updated">
             Last updated: {lastUpdated.toLocaleTimeString()}
@@ -362,6 +407,7 @@ export default function AdminDashboard() {
           <IncidentsTab
             incidents={incidents}
             onUpdateIncident={updateIncidentStatus}
+            onLogAction={logAuditAction}
           />
         )}
         {activeTab === "users" && (
@@ -370,21 +416,12 @@ export default function AdminDashboard() {
             onUpdateUser={updateUserStatus}
             onUpdateRole={updateUserRole}
             onDeleteUser={deleteUser}
+            onLogAction={logAuditAction}
           />
         )}
         {activeTab === "analytics" && <AnalyticsTab />}
-        {activeTab === "appeals" && <AppealsTab />}
-        {activeTab === "bulk actions" && (
-          <BulkActionsTab
-            incidents={incidents}
-            selectedIncidents={selectedIncidents}
-            toggleIncidentSelection={toggleIncidentSelection}
-            selectAllIncidents={selectAllIncidents}
-            clearSelection={clearSelection}
-            onUpdateIncidents={updateIncidentStatus}
-          />
-        )}
-        {activeTab === "audit logs" && <AuditLogsTab />}
+        {activeTab === "appeals" && <AppealsTab onLogAction={logAuditAction} />}
+        {activeTab === "audit_logs" && <AuditLogsTab />}
         {activeTab === "export" && <ExportTab />}
       </div>
     </div>

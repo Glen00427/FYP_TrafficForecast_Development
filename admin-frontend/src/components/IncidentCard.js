@@ -6,6 +6,7 @@ function IncidentCard({
   onApprove,
   onReject,
   onAddTags,
+  onRetract,
 }) {
   // Safely handle tags with comprehensive error checking
   const getTagsArray = () => {
@@ -31,6 +32,9 @@ function IncidentCard({
     }
   };
 
+  const isResolved =
+    incident.status === "approved" || incident.status === "rejected";
+
   const tagsArray = getTagsArray();
   const hasVerifiedTag = tagsArray.includes("verified");
 
@@ -43,9 +47,8 @@ function IncidentCard({
         )}
         <div className="incident-tags">
           <span
-            className={`severity-tag ${
-              incident.severity?.toLowerCase() || "medium"
-            }`}
+            className={`severity-tag ${incident.severity?.toLowerCase() || "medium"
+              }`}
           >
             {incident.severity}
           </span>
@@ -71,15 +74,28 @@ function IncidentCard({
         <button onClick={() => onAIAnalysis(incident)} className="btn-outline">
           AI Analysis
         </button>
-        <button onClick={() => onApprove(incident)} className="btn-success">
-          Approve
-        </button>
-        <button onClick={() => onReject(incident)} className="btn-danger">
-          Reject
-        </button>
-        <button onClick={() => onAddTags(incident)} className="btn-outline">
-          Add Tags
-        </button>
+
+        {/* Show different actions based on status */}
+        {incident.status === "pending" && (
+          <>
+            <button onClick={() => onApprove(incident)} className="btn-success">
+              Approve
+            </button>
+            <button onClick={() => onReject(incident)} className="btn-danger">
+              Reject
+            </button>
+            <button onClick={() => onAddTags(incident)} className="btn-outline">
+              Add Tags
+            </button>
+          </>
+        )}
+
+        {/* Show retract button for resolved incidents */}
+        {isResolved && (
+          <button onClick={() => onRetract(incident)} className="btn-warning">
+            Retract Decision
+          </button>
+        )}
       </div>
     </div>
   );
