@@ -20,7 +20,7 @@ body,
   margin: 0 auto;
   overflow: hidden;
   position: relative;
-  transform: scale(0.8); /* adjust to fit your screen */
+  transform: scale(0.8);
   transform-origin: top left;
 }
 
