@@ -34,6 +34,29 @@ export default function IncidentReportForm({
   ];
   const SEVERITIES = ["Low", "Medium", "High"];
 
+  // 🔍 Helper: use OpenStreetMap for geocoding if no GPS
+  async function geocodeAddress(address) {
+    if (!address) return null;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      address
+    )}&countrycodes=SG`; // limit to Singapore
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "IncidentReporter/1.0" },
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+        };
+      }
+    } catch (err) {
+      console.error("Geocoding failed:", err);
+    }
+    return null;
+  }
+
   function handleUseGPS() {
     if (!navigator.geolocation) {
       alert("Geolocation not supported on this device.");
@@ -63,21 +86,33 @@ export default function IncidentReportForm({
     setPhoto(f);
   }
 
-  function submit(e) {
+  async function submit(e) {
     e.preventDefault();
     if (!type) return alert("Please choose an incident type.");
     if (!severity) return alert("Please choose a severity.");
     if (!road && !fullAddress && !gps)
       return alert("Please provide a location (road, address, or GPS).");
 
+    // 🌍 Use existing GPS or geocode if not available
+    let coords = gps;
+    if (!coords) {
+      const addr = fullAddress || road;
+      coords = await geocodeAddress(addr);
+      if (!coords) {
+        alert("Could not determine coordinates from the address.");
+        return;
+      }
+    }
+
     const payload = {
       type,
       severity,
-      location: { road, fullAddress, gps }, // gps: {lat, lng} if provided
+      location: { road, fullAddress, gps: coords },
       description,
-      photo, // File or null
+      photo,
       createdAt: new Date().toISOString(),
     };
+
     onSubmit(payload);
   }
 
@@ -216,7 +251,6 @@ export default function IncidentReportForm({
           >
             Cancel
           </button>
-          {/* Use base rif-btn + an existing blue primary class from your CSS */}
           <button
             type="submit"
             className="rif-btn sbm-btn-primary"
@@ -228,4 +262,5 @@ export default function IncidentReportForm({
       </div>
     </div>
   );
+}
 }
