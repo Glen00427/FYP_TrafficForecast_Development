@@ -58,7 +58,8 @@ async function getRoadName(lat, lng) {
 export default function LiveTrafficMap({ 
   routeGeometry = [], 
   incidents = [],
-  isGuest = true 
+  user,
+  isGuest
 }) {
   const mapRef = useRef(null);
   const path = useMemo(() => normalizePath(routeGeometry), [routeGeometry]);
@@ -83,7 +84,7 @@ export default function LiveTrafficMap({
     [path]
   );
 
-  // Auto-zoom to route when it changes (this is the key addition!)
+  // Auto-zoom to route when it changes 
   useEffect(() => {
     if (mapRef.current && path.length > 1) {
       const bounds = new window.google.maps.LatLngBounds();
@@ -92,9 +93,11 @@ export default function LiveTrafficMap({
     }
   }, [path]);
 
+
   return (
     <LoadScript googleMapsApiKey={GOOGLE_MAPS_KEY}>
       <GoogleMap
+        key={incidents.length}
         mapContainerStyle={containerStyle}
         onLoad={onMapLoad}
         options={{
@@ -121,103 +124,131 @@ export default function LiveTrafficMap({
         )}
 
         {/* Optional incident markers */}
-        {incidents.map((i) => {
-          const icon =
-            window.google && window.google.maps
-              ? {
-                  url: "./warning.png",
-                  scaledSize: new window.google.maps.Size(30, 30),
-                  anchor: new window.google.maps.Point(17, 34),
-                }
-              : null; // wait until Google is ready
+        {!isGuest &&
+        incidents.map((i) => {
+            const iconUrl = i.source === "User" ? "./userwarning.png" : "./warning.png";
+            const icon =
+              window.google && window.google.maps
+                ? {
+                    url: iconUrl,
+                    scaledSize: new window.google.maps.Size(30, 30),
+                    anchor: new window.google.maps.Point(17, 34),
+                  }
+                : null;
 
-          return (
-            <Marker
-              key={i.id}
-              position={{ lat: i.lat, lng: i.lng }}
-              title={i.title}
-              icon={icon}
-              onClick={async () => {
-                const roadName = await getRoadName(i.lat, i.lng);
-                setSelectedIncident({ ...i, roadName });
-              }}
-            />
-          );
-        })}
+            return (
+              <Marker
+                key={i.id}
+                position={{ lat: i.lat, lng: i.lng }}
+                title={i.title}
+                icon={icon}
+                onClick={async () => {
+                  const roadName = await getRoadName(i.lat, i.lng);
+                  setSelectedIncident({ ...i, roadName });
+                }}
+              />
+            );
+          })}
 
+        {selectedIncident && (() => {
+        let dateTime = null;
+        let cleanMessage = selectedIncident.message || "";
 
-        {/* InfoWindow for selected incident */}
-        {selectedIncident && (
+        // Use pre-formatted createdAt for user incidents
+        if (selectedIncident.source === "User" && selectedIncident.createdAt) {
+          dateTime = selectedIncident.createdAt; 
+        } else {
+          // Fallback: parse date/time from message
+          const match = cleanMessage.match(/\((\d{1,2}\/\d{1,2})\)(\d{2}:\d{2})/);
+          if (match) {
+            const [fullMatch, datePart, timePart] = match;
+            dateTime = `${datePart} ${timePart}`;
+            cleanMessage = cleanMessage.replace(fullMatch, "").trim();
+          }
+        }
+
+        return (
           <InfoWindow
-            position={{ lat: selectedIncident.lat, lng: selectedIncident.lng }}
+            position={{
+              lat: selectedIncident.lat,
+              lng: selectedIncident.lng,
+            }}
             onCloseClick={() => setSelectedIncident(null)}
           >
-            <div style={{ maxWidth: "220px" }}>
-              {(() => {
-                const msg = selectedIncident.message || "";
-        
-                // Extract date/time from message, e.g., "(26/10)13:10"
-                const match = msg.match(/\((\d{1,2}\/\d{1,2})\)(\d{2}:\d{2})/);
-                let dateTime = null;
-                let cleanMessage = msg;
-        
-                if (match) {
-                  const [full, date, time] = match;
-                  dateTime = `${date} ${time}`;
-                  cleanMessage = msg.replace(full, "").trim();
-                }
-        
-                return (
-                  <>
-                    {/* Date & Time */}
-                    {dateTime && (
-                      <p
-                        style={{
-                          margin: "0 0 5px 0",
-                          color: "#6b7280",
-                          fontSize: "0.85em",
-                        }}
-                      >
-                        {dateTime}
-                      </p>
-                    )}
-        
-                    {/* Incident Type */}
-                    <h4 style={{ margin: "0 0 5px 0" }}>{selectedIncident.title}</h4>
-        
-                    {/* Severity */}
-                    {selectedIncident.severity && (
-                      <p
-                        style={{
-                          margin: "0 0 5px 0",
-                          fontWeight: "bold",
-                          color:
-                            selectedIncident.severity === "High"
-                              ? "red"
-                              : selectedIncident.severity === "Medium"
-                              ? "orange"
-                              : "green",
-                        }}
-                      >
-                        {selectedIncident.severity}
-                      </p>
-                    )}
-        
-                    {/* Road Name */}
-                    {selectedIncident.roadName && (
-                      <p style={{ margin: "0 0 5px 0", fontStyle: "italic" }}>
-                        {selectedIncident.roadName}
-                      </p>
-                    )}
-        
-                    {/* Message */}
-                    <p style={{ margin: 0 }}>{cleanMessage}</p>
-                  </>
-                );
-              })()}
+          
+            <div style={{ maxWidth: "240px" }}>
+              {dateTime && (
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold" }}>
+                  🕒 {dateTime}
+                </p>
+              )}
+              
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px" }}>
+                <h4 style={{ margin: 0, fontWeight: "bold" }}>
+                  {selectedIncident.title
+                    ? selectedIncident.title.charAt(0).toUpperCase() +
+                      selectedIncident.title.slice(1)
+                    : "Incident"}
+                </h4>
+
+                {selectedIncident.severity && (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontWeight: "bold",
+                      color:
+                        selectedIncident.severity.toLowerCase() === "high"
+                          ? "red"
+                          : selectedIncident.severity.toLowerCase() === "medium"
+                          ? "orange"
+                          : "green",
+                    }}
+                  >
+                    {selectedIncident.severity.charAt(0).toUpperCase() +
+                      selectedIncident.severity.slice(1)}
+                  </p>
+                )}
+              </div>
+
+              {selectedIncident.roadName && (
+                <p style={{ margin: "0 0 5px 0", fontWeight: "bold", fontStyle: "italic" }}>
+                  {selectedIncident.roadName}
+                </p>
+              )}
+
+              {selectedIncident.fullAddress && (
+                <p style={{ margin: "0 0 5px 0", fontStyle: "italic" }}>
+                  {selectedIncident.fullAddress}
+                </p>
+              )}
+              
+              {selectedIncident.photo_url && (
+                <div style={{ margin: "5px 0" }}>
+                  <img
+                    src={selectedIncident.photo_url}
+                    alt="Incident"
+                    style={{
+                      width: "100%",
+                      maxHeight: "150px",
+                      objectFit: "cover",
+                      borderRadius: "6px",
+                    }}
+                  />
+                </div>
+              )}
+              <p style={{ margin: 0 }}>{cleanMessage}</p>
+
+              {selectedIncident.user_id && (
+                <p style={{ margin: "0 0 5px 0", color: "#555" }}>
+                  <br />
+                  👤 Submitted by: User #{selectedIncident.user_id}
+                </p>
+              )}
+
             </div>
           </InfoWindow>
-        )}
+        );
+      })()}
       </GoogleMap>
     </LoadScript>
   );
