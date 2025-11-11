@@ -121,14 +121,14 @@ export default function LiveTrafficMap({
         {!isGuest &&
           incidents.map((i) => {
             const iconUrl =
-              i.source === "User" ? "/userwarning.png" : "/warning.png";
+              i.source === "User" ? "./userwarning.png" : "./warning.png";
             const icon =
               window.google && window.google.maps
                 ? {
-                  url: iconUrl,
-                  scaledSize: new window.google.maps.Size(30, 30),
-                  anchor: new window.google.maps.Point(17, 34),
-                }
+                    url: iconUrl,
+                    scaledSize: new window.google.maps.Size(30, 30),
+                    anchor: new window.google.maps.Point(17, 34),
+                  }
                 : null;
 
             return (
@@ -187,7 +187,7 @@ export default function LiveTrafficMap({
                   <h4 style={{ margin: 0, fontWeight: "bold" }}>
                     {selectedIncident.title
                       ? selectedIncident.title.charAt(0).toUpperCase() +
-                      selectedIncident.title.slice(1)
+                        selectedIncident.title.slice(1)
                       : "Incident"}
                   </h4>
 
@@ -200,8 +200,8 @@ export default function LiveTrafficMap({
                           selectedIncident.severity.toLowerCase() === "high"
                             ? "red"
                             : selectedIncident.severity.toLowerCase() === "medium"
-                              ? "orange"
-                              : "green",
+                            ? "orange"
+                            : "green",
                       }}
                     >
                       {selectedIncident.severity.charAt(0).toUpperCase() +
