@@ -1,3 +1,4 @@
+// src/components/IncidentReportForm.js
 import React, { useEffect, useRef, useState } from "react";
 
 export default function IncidentReportForm({
@@ -14,6 +15,7 @@ export default function IncidentReportForm({
   const [gps, setGps] = useState(null);
   const fileRef = useRef(null);
 
+  // 🧭 Prevent background scroll when modal is open
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -34,6 +36,30 @@ export default function IncidentReportForm({
   ];
   const SEVERITIES = ["Low", "Medium", "High"];
 
+  // 🌍 Geocode fallback if user typed an address
+  async function geocodeAddress(address) {
+    if (!address) return null;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+      address
+    )}&countrycodes=SG`;
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "IncidentReporter/1.0" },
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+        };
+      }
+    } catch (err) {
+      console.error("Geocoding failed:", err);
+    }
+    return null;
+  }
+
+  // 📍 GPS detection (adds alert if unsupported)
   function handleUseGPS() {
     if (!navigator.geolocation) {
       alert("Geolocation not supported on this device.");
@@ -53,6 +79,7 @@ export default function IncidentReportForm({
     );
   }
 
+  // 📸 File validation & preview
   function handleFile(e) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -63,24 +90,37 @@ export default function IncidentReportForm({
     setPhoto(f);
   }
 
-  function submit(e) {
+  // 🧾 Submit handler with geocoding fallback
+  async function submit(e) {
     e.preventDefault();
     if (!type) return alert("Please choose an incident type.");
     if (!severity) return alert("Please choose a severity.");
     if (!road && !fullAddress && !gps)
       return alert("Please provide a location (road, address, or GPS).");
 
+    let coords = gps;
+    if (!coords) {
+      const addr = fullAddress || road;
+      coords = await geocodeAddress(addr);
+      if (!coords) {
+        alert("Could not determine coordinates from the address.");
+        return;
+      }
+    }
+
     const payload = {
       type,
       severity,
-      location: { road, fullAddress, gps }, // gps: {lat, lng} if provided
+      location: { road, fullAddress, gps: coords },
       description,
-      photo, // File or null
+      photo,
       createdAt: new Date().toISOString(),
     };
+
     onSubmit(payload);
   }
 
+  // 🧱 UI
   return (
     <div className="rif-backdrop rif-backdrop--full" onClick={onCancel}>
       <div
@@ -216,10 +256,9 @@ export default function IncidentReportForm({
           >
             Cancel
           </button>
-          {/* Use base rif-btn + an existing blue primary class from your CSS */}
           <button
             type="submit"
-            className="rif-btn sbm-btn-primary"
+            className="rif-btn rif-btn--primary"
             onClick={submit}
           >
             Submit
