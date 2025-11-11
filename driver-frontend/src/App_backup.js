@@ -1,5 +1,6 @@
 import AuthGate from "./components/AuthGate";
 import React, { useState, useEffect } from "react";
+import TrafficAlerts from "./components/TrafficAlerts";
 import TrafficMap from "./components/TrafficMap";
 import SideMenu from "./components/SideMenu";
 import SavedRoutes from "./components/SavedRoutes";
@@ -285,9 +286,6 @@ export default function App() {
         onCreateAccount={() => setAccountOpen(true)}
         onSignIn={() => setSignInOpen(true)}
         onLogout={handleLogout}
-        userName={user?.name || "User"}  
-        userIdProp={user?.id ?? user?.userid ?? null}    
-        userEmailProp={(user?.email || "").toLowerCase()}
       />
 
       {/* LIVE MAP PAGE */}
