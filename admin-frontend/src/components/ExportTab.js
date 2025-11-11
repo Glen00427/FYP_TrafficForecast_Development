@@ -14,10 +14,7 @@ function ExportTab() {
       setExporting(true);
       setExportResult(null);
 
-      // Compute date range
       const { startDate, endDate } = calculateDateRange(dateRange);
-
-      // Build data & filename per type
       let data;
       let fileName;
 
@@ -51,13 +48,9 @@ function ExportTab() {
         return;
       }
 
-      if (format === "csv") {
-        downloadCSV(data, `${fileName}.csv`);
-      } else if (format === "json") {
-        downloadJSON(data, `${fileName}.json`);
-      } else {
-        throw new Error("Unsupported format");
-      }
+      if (format === "csv") downloadCSV(data, `${fileName}.csv`);
+      else if (format === "json") downloadJSON(data, `${fileName}.json`);
+      else throw new Error("Unsupported format");
 
       setExportResult({
         success: true,
@@ -76,7 +69,6 @@ function ExportTab() {
   };
 
   // ===== Helpers =====
-
   const getStatusOptions = () => [
     { value: "all", label: "All" },
     { value: "pending", label: "Pending Review" },
@@ -90,7 +82,6 @@ function ExportTab() {
   const calculateDateRange = (preset) => {
     const end = new Date();
     const start = new Date(end);
-
     switch (preset) {
       case "7days":
         start.setDate(end.getDate() - 7);
@@ -102,9 +93,6 @@ function ExportTab() {
         start.setDate(end.getDate() - 90);
         break;
       case "custom":
-        // For now, custom is same as 7 days unless you wire a date picker
-        start.setDate(end.getDate() - 7);
-        break;
       default:
         start.setDate(end.getDate() - 7);
     }
@@ -116,73 +104,58 @@ function ExportTab() {
       d.getDate()
     ).padStart(2, "0")}`;
 
-  // ===== Data fetchers (adjust table/column names here if needed) =====
-
-  // INCIDENTS
+  // ===== Data fetchers =====
   const exportIncidents = async (startDate, endDate, status) => {
     let query = supabase
       .from("incident_report")
-      .select(
-        `
-        *,
-        users:user_id (name, email)
-      `
-      )
+      .select(`*, users:user_id (name, email)`)
       .gte("createdAt", startDate.toISOString())
       .lte("createdAt", endDate.toISOString());
 
-    if (status !== "all") {
-      query = query.eq("status", status);
-    }
-
+    if (status !== "all") query = query.eq("status", status);
     const { data, error } = await query;
     if (error) throw error;
 
-    // Flatten for export
-    return data.map((incident) => ({
-      ID: incident.id,
-      Type: incident.incidentType,
-      Severity: incident.severity,
-      Location: incident.location,
-      "Full Address": incident.fullAddress,
-      Description: incident.description,
-      "Photo URL": incident.photo_url || "",
-      Status: incident.status,
-      Tags: Array.isArray(incident.tags) ? incident.tags.join("|") : "",
-      "Created At": incident.createdAt,
-      "User ID": incident.user_id,
-      "User Name": incident.users?.name || "",
-      "User Email": incident.users?.email || "",
+    return data.map((i) => ({
+      ID: i.id,
+      Type: i.incidentType,
+      Severity: i.severity,
+      Location: i.location,
+      "Full Address": i.fullAddress,
+      Description: i.description,
+      "Photo URL": i.photo_url || "",
+      Status: i.status,
+      Tags: Array.isArray(i.tags) ? i.tags.join("|") : "",
+      "Created At": i.createdAt,
+      "User ID": i.user_id,
+      "User Name": i.users?.name || "",
+      "User Email": i.users?.email || "",
     }));
   };
 
-  // USERS
   const exportUsers = async (status) => {
     let query = supabase.from("users").select("*");
     if (status !== "all") query = query.eq("status", status);
-
     const { data, error } = await query;
     if (error) throw error;
 
-    return data.map((user) => ({
-      "User ID": user.userid || user.id || user.user_id,
-      Name: user.name,
-      Email: user.email,
-      Role: user.role,
-      Status: user.status,
-      "Created At": user.created_at || user.createdAt,
-      "Phone": user.phone || "",
+    return data.map((u) => ({
+      "User ID": u.userid || u.id || u.user_id,
+      Name: u.name,
+      Email: u.email,
+      Role: u.role,
+      Status: u.status,
+      "Created At": u.created_at || u.createdAt,
+      Phone: u.phone || "",
     }));
   };
 
-  // APPEALS
   const exportAppeals = async (startDate, endDate, status) => {
     let query = supabase
       .from("appeals")
       .select("*")
       .gte("created_at", startDate.toISOString())
       .lte("created_at", endDate.toISOString());
-
     if (status !== "all") query = query.eq("status", status);
 
     const { data, error } = await query;
@@ -201,7 +174,6 @@ function ExportTab() {
     }));
   };
 
-  // AUDIT LOGS
   const exportAuditLogs = async (startDate, endDate) => {
     const { data, error } = await supabase
       .from("audit_logs")
@@ -215,7 +187,10 @@ function ExportTab() {
       "Admin ID": r.admin_id,
       "Action Type": r.action_type,
       Description: r.description,
-      Details: typeof r.details === "object" ? JSON.stringify(r.details) : (r.details || ""),
+      Details:
+        typeof r.details === "object"
+          ? JSON.stringify(r.details)
+          : r.details || "",
       "Target User ID": r.target_user_id || "",
       "Target Incident ID": r.target_incident_id || "",
       "Created At": r.created_at,
@@ -260,8 +235,9 @@ function ExportTab() {
   // ===== UI =====
   return (
     <div className="export-tab">
-      <h2>Data Export</h2>
       <div className="export-form">
+        <h2 className="export-title">Data Export</h2>
+
         <div className="form-group">
           <label>Data Type</label>
           <select value={dataType} onChange={(e) => setDataType(e.target.value)}>

@@ -1467,20 +1467,47 @@
 .export-tab {
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  padding: 40px 0;
+  color: var(--text-primary);
 }
 
 .export-form {
-  background: linear-gradient(135deg, var(--card-bg), var(--bg-secondary));
-  padding: 32px;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px var(--shadow-color);
+  background: linear-gradient(135deg, var(--bg-secondary), var(--card-bg));
+  border-radius: 16px;
+  padding: 36px 44px;
   width: 100%;
-  max-width: 500px;
+  max-width: 540px;
   border: 1px solid var(--border-color);
+  box-shadow: 0 10px 40px var(--shadow-color);
+  transition: all 0.3s ease;
+}
+
+.export-form:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 50px var(--shadow-color);
+}
+
+.export-form h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
 }
 
 .form-group {
   margin-bottom: 24px;
+}
+
+.form-group small {
+  color: var(--text-muted);
+  display: block;
+  margin-top: 8px;
+  font-size: 0.85rem;
 }
 
 .form-group label {
@@ -1516,6 +1543,28 @@
   font-weight: 700;
   margin-top: 8px;
 }
+
+.export-result {
+  margin-top: 24px;
+  text-align: center;
+  padding: 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.export-result.success {
+  border-left: 5px solid var(--success-color);
+  color: var(--success-color);
+}
+
+.export-result.error {
+  border-left: 5px solid var(--danger-color);
+  color: var(--danger-color);
+}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
