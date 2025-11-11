@@ -6,7 +6,7 @@ function IncidentCard({
   onApprove,
   onReject,
   onAddTags,
-  onRetract,
+  onRetract, // Add this new prop
 }) {
   // Safely handle tags with comprehensive error checking
   const getTagsArray = () => {
@@ -32,30 +32,101 @@ function IncidentCard({
     }
   };
 
-  const isResolved =
-    incident.status === "approved" || incident.status === "rejected";
+  // Function to capitalize first letter of each word
+  const capitalizeWords = (text) => {
+    if (!text) return "";
+    return text
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
 
   const tagsArray = getTagsArray();
-  const hasVerifiedTag = tagsArray.includes("verified");
+  const isResolved =
+    incident.status === "approved" || incident.status === "rejected";
 
   return (
     <div className="incident-card">
       <div className="incident-header">
-        <h4>{incident.location}</h4>
-        {incident.fullAddress && (
-          <p className="full-address">{incident.fullAddress}</p>
-        )}
+        <div className="location-section">
+          <h4>{incident.location}</h4>
+          {/* Display full address directly under location */}
+          {incident.fullAddress && (
+            <p className="full-address">Address: {incident.fullAddress}</p>
+          )}
+        </div>
         <div className="incident-tags">
+          {/* Show verification info if available */}
+          {incident.verified_at && (
+            <span
+              className="verified-tag"
+              title={`${incident.status === "approved" ? "Approved" : "Rejected"
+                } on ${new Date(incident.verified_at).toLocaleDateString()}`}
+            >
+              {incident.status === "approved" ? "Approved" : "Rejected"} ✓
+            </span>
+          )}
+
+          {/* Show Approved tag if incident is approved */}
+          {incident.status === "approved" && (
+            <span className="approved-tag">Approved</span>
+          )}
+
+          {/* Show Rejected tag if incident is rejected */}
+          {incident.status === "rejected" && (
+            <span className="rejected-tag">Rejected</span>
+          )}
+
           <span
             className={`severity-tag ${incident.severity?.toLowerCase() || "medium"
               }`}
           >
-            {incident.severity}
+            {capitalizeWords(incident.severity)}
           </span>
-          <span className="type-tag">{incident.incidentType}</span>
-          {hasVerifiedTag && <span className="verified-tag">verified</span>}
+          <span className="type-tag">
+            {capitalizeWords(incident.incidentType)}
+          </span>
+
+          {/* Show other custom tags */}
+          {tagsArray.map((tag, index) => (
+            <span key={index} className="type-tag">
+              {capitalizeWords(tag)}
+            </span>
+          ))}
         </div>
       </div>
+
+      {/* Show action details for BOTH approved and rejected incidents */}
+      {incident.verified_at && (
+        <div
+          className={`action-info ${incident.status === "rejected"
+              ? "rejection-info"
+              : "verification-info"
+            }`}
+        >
+          <small>
+            <strong>
+              {incident.status === "approved" ? "Approved" : "Rejected"}:
+            </strong>{" "}
+            {new Date(incident.verified_at).toLocaleString()}
+            {incident.admin_verifier?.name &&
+              ` by ${incident.admin_verifier.name}`}
+            {!incident.admin_verifier?.name &&
+              incident.verified_by &&
+              ` by Admin ${incident.verified_by}`}
+          </small>
+        </div>
+      )}
+
+      {/* Show rejection reason if available */}
+      {incident.status === "rejected" && incident.reason && (
+        <div className="rejection-reason">
+          <strong>Rejection Reason:</strong>
+          <p>{incident.reason}</p>
+        </div>
+      )}
+
       <p className="incident-description">{incident.description}</p>
       {incident.photo_url && (
         <div className="incident-photo">
@@ -67,7 +138,9 @@ function IncidentCard({
         </div>
       )}
       <div className="incident-meta">
-        <span>Reported by user: {incident.user_id}</span>
+        <span>
+          Reported by: {incident.users?.name || `User ${incident.user_id}`}
+        </span>
         <span>{new Date(incident.createdAt).toLocaleDateString()}</span>
       </div>
       <div className="incident-actions">

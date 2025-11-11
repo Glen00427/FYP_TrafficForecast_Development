@@ -4,7 +4,13 @@ import UnbanModal from "./UnbanModal";
 import DeleteUserModal from "./DeleteUserModal";
 import RoleModal from "./RoleModal";
 
-function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction }) {
+function UsersTab({
+  users,
+  onUpdateUser,
+  onUpdateRole,
+  onDeleteUser,
+  onLogAction,
+}) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showBanModal, setShowBanModal] = useState(false);
   const [showUnbanModal, setShowUnbanModal] = useState(false);
@@ -12,7 +18,7 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // Add search term state
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,7 +81,7 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
     });
   };
 
-  // Filter users based on role and status
+  // Filter users based on role, status, and search term
   const filteredUsers = users.filter((user) => {
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesStatus =
@@ -181,10 +187,11 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
   // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [roleFilter, statusFilter]);
+  }, [roleFilter, statusFilter, searchTerm]);
 
   return (
     <div className="users-tab">
+      {/* Users Tab - Now Vertical Layout */}
       <div className="users-filters-column">
         <div className="user-search-container">
           <input
@@ -269,13 +276,23 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
                     {/* Show different actions based on status */}
                     {user.status === "inactive" ? (
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (onUpdateUser && user) {
-                            onUpdateUser(
+                            const success = await onUpdateUser(
                               user.userid,
                               "active",
                               "User restored by admin"
                             );
+                            if (success && onLogAction) {
+                              // LOG AUDIT ACTION
+                              await onLogAction(
+                                "user_restore",
+                                `Restored user: ${user.name} (${user.email})`,
+                                "User account reactivated",
+                                user.userid, // targetUserId
+                                null // targetIncidentId
+                              );
+                            }
                           }
                         }}
                         className="btn-success"
@@ -362,7 +379,7 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
         </div>
       </div>
 
-      {/* Modals remain the same */}
+      {/* Modals with Audit Logging */}
       {showBanModal && (
         <BanModal
           user={selectedUser}
@@ -380,8 +397,8 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
                   "user_ban",
                   `Banned user: ${selectedUser.name} (${selectedUser.email})`,
                   `Reason: ${reason} | Details: ${description}`,
-                  selectedUser.userid,
-                  null
+                  selectedUser.userid, // targetUserId
+                  null // targetIncidentId
                 );
               }
             }
@@ -407,8 +424,8 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
                   "user_unban",
                   `Unbanned user: ${selectedUser.name} (${selectedUser.email})`,
                   `Reason: ${reason}`,
-                  selectedUser.userid,
-                  null
+                  selectedUser.userid, // targetUserId
+                  null // targetIncidentId
                 );
               }
             }
@@ -431,8 +448,8 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
                   "role_change",
                   `Changed role for user: ${selectedUser.name} (${selectedUser.email})`,
                   `From: ${oldRole} → To: ${newRole}`,
-                  selectedUser.userid,
-                  null
+                  selectedUser.userid, // targetUserId
+                  null // targetIncidentId
                 );
               }
             }
@@ -454,8 +471,8 @@ function UsersTab({ users, onUpdateUser, onUpdateRole, onDeleteUser, onLogAction
                   "user_delete",
                   `Deleted user: ${selectedUser.name} (${selectedUser.email})`,
                   `Reason: ${reason}`,
-                  selectedUser.userid,
-                  null
+                  selectedUser.userid, // targetUserId
+                  null // targetIncidentId
                 );
               }
             }

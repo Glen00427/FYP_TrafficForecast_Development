@@ -4,42 +4,42 @@ import AIAnalysisModal from "./AIAnalysisModal";
 import ApproveModal from "./ApproveModal";
 import RejectModal from "./RejectModal";
 import AddTagsModal from "./AddTagsModal";
-import RetractIncidentModal from "./RetractIncidentModal";
+import RetractIncidentModal from "./RetractIncidentModal"; // Add this import
 
 function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("pending"); // Default to pending only
+  const [typeFilter, setTypeFilter] = useState("all");
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [showAI, setShowAI] = useState(false);
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [showTags, setShowTags] = useState(false);
-  const [showRetract, setShowRetract] = useState(false);
+  const [showRetract, setShowRetract] = useState(false); // Add this state
 
-  // Local state for incidents to allow immediate updates
-  const [localIncidents, setLocalIncidents] = useState(incidents);
-
-  // Update local incidents when props change
-  React.useEffect(() => {
-    setLocalIncidents(incidents);
-  }, [incidents]);
+  // Use the incidents prop directly
+  const displayIncidents = incidents;
 
   const handleAIAnalysis = (incident) => {
+    console.log("🤖 AI Analysis clicked for:", incident);
     setSelectedIncident(incident);
     setShowAI(true);
   };
 
   const handleApprove = (incident) => {
+    console.log("🟢 Approve button clicked for:", incident);
     setSelectedIncident(incident);
     setShowApprove(true);
   };
 
   const handleReject = (incident) => {
+    console.log("🔴 Reject button clicked for:", incident);
     setSelectedIncident(incident);
     setShowReject(true);
   };
 
   const handleAddTags = (incident) => {
+    console.log("🏷️ Add Tags clicked for:", incident);
     setSelectedIncident(incident);
     setShowTags(true);
   };
@@ -49,7 +49,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
     setSelectedIncident(incident);
     setShowRetract(true);
   };
-  
 
   const handleApproveIncident = async (tags = []) => {
     if (selectedIncident) {
@@ -105,6 +104,7 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
           tags
         );
 
+        // Update database via parent function - pass both reason and tags
         const updatedIncident = await onUpdateIncident(
           selectedIncident.id,
           "rejected",
@@ -140,21 +140,43 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
 
   const handleAddTagsToIncident = async (tags) => {
     if (selectedIncident) {
-      // Update local state immediately
-      setLocalIncidents((prev) =>
-        prev.map((incident) =>
-          incident.id === selectedIncident.id ? { ...incident, tags } : incident
-        )
-      );
+      try {
+        console.log(
+          "🏷️ Adding tags to incident:",
+          selectedIncident.id,
+          "Tags:",
+          tags
+        );
 
-      // Update database
-      await onUpdateIncident(
-        selectedIncident.id,
-        selectedIncident.status,
-        tags
-      );
+        const updatedIncident = await onUpdateIncident(
+          selectedIncident.id,
+          selectedIncident.status,
+          tags
+        );
 
-      setShowTags(false);
+        if (updatedIncident) {
+          console.log("✅ Tags added successfully");
+
+          // LOG AUDIT ACTION
+          if (onLogAction) {
+            await onLogAction(
+              "incident_tag",
+              `Added tags to incident report #${selectedIncident.id}`,
+              `Tags: ${tags.join(", ")} | Status: ${selectedIncident.status}`,
+              null, // targetUserId
+              selectedIncident.id // targetIncidentId
+            );
+          }
+        } else {
+          throw new Error("Failed to update tags in database");
+        }
+
+        setShowTags(false);
+        setSelectedIncident(null);
+      } catch (error) {
+        console.error("❌ Error adding tags:", error);
+        alert("Failed to add tags. Please try again.");
+      }
     }
   };
 
@@ -200,26 +222,30 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
     }
   };
 
-  // Filter incidents based on search and status - use localIncidents
-  const filteredIncidents = localIncidents.filter((incident) => {
+  // Filter incidents - only show pending by default, but allow viewing others via filter
+  const filteredIncidents = displayIncidents.filter((incident) => {
+    const searchTermLower = searchTerm.toLowerCase();
+
     const matchesSearch =
       (incident.location &&
-        incident.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        incident.location.toLowerCase().includes(searchTermLower)) ||
       (incident.description &&
-        incident.description
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
+        incident.description.toLowerCase().includes(searchTermLower)) ||
       (incident.incidentType &&
-        incident.incidentType
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase())) ||
+        incident.incidentType.toLowerCase().includes(searchTermLower)) ||
       (incident.fullAddress &&
-        incident.fullAddress.toLowerCase().includes(searchTerm.toLowerCase()));
+        incident.fullAddress.toLowerCase().includes(searchTermLower)) ||
+      (incident.users?.name &&
+        incident.users.name.toLowerCase().includes(searchTermLower)) ||
+      (incident.tags && incident.tags.toLowerCase().includes(searchTermLower));
 
     const matchesStatus =
       statusFilter === "all" || incident.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesType =
+      typeFilter === "all" || incident.incidentType === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   // Sort incidents by createdAt date (newest first)
@@ -231,38 +257,59 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
 
   return (
     <div className="incidents-tab">
-      <div className="filters">
-        <input
-          type="text"
-          placeholder="Search incidents by location, type, or address..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="filter-select"
-        >
-          <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-        </select>
+      {/* Updated Filters Layout - Dropdowns below search bar */}
+      <div className="incident-filters-column">
+        <div className="incident-search-container">
+          <input
+            type="text"
+            placeholder="Search by location, type, address, or user..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="incident-search-input"
+          />
+        </div>
+        <div className="incident-filter-dropdowns">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="incident-filter-select"
+          >
+            <option value="pending">Pending</option>
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="incident-filter-select"
+          >
+            <option value="all">All Types</option>
+            <option value="Accident">Accident</option>
+            <option value="Breakdown">Breakdown</option>
+            <option value="Roadwork">Roadwork</option>
+            <option value="Weather">Weather</option>
+            <option value="Community Report">Community Report</option>
+          </select>
+        </div>
       </div>
 
       {/* Status Summary */}
       <div className="status-summary">
         <span className="status-count pending">
-          Pending: {localIncidents.filter((i) => i.status === "pending").length}
+          Pending:{" "}
+          {displayIncidents.filter((i) => i.status === "pending").length}
         </span>
         <span className="status-count approved">
           Approved:{" "}
-          {localIncidents.filter((i) => i.status === "approved").length}
+          {displayIncidents.filter((i) => i.status === "approved").length}
         </span>
         <span className="status-count rejected">
           Rejected:{" "}
-          {localIncidents.filter((i) => i.status === "rejected").length}
+          {displayIncidents.filter((i) => i.status === "rejected").length}
+        </span>
+        <span className="status-count total">
+          Total: {displayIncidents.length}
         </span>
       </div>
 
@@ -279,13 +326,18 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
               onApprove={handleApprove}
               onReject={handleReject}
               onAddTags={handleAddTags}
-              onRetract={handleRetract}
+              onRetract={handleRetract} // Pass the retract handler
             />
           ))
         ) : (
           <div className="no-data">
             <p>
-              No {statusFilter === "all" ? "" : statusFilter} incidents found.
+              {statusFilter === "pending"
+                ? "No pending incidents need review."
+                : `No ${
+                    statusFilter === "all" ? "" : statusFilter
+                  } incidents found.`}
+              {searchTerm && ` No results for "${searchTerm}"`}
             </p>
           </div>
         )}
