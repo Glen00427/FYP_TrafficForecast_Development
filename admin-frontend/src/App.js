@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import LoginPage from "./component/LoginPage";
-import AdminDashboard from "./component/AdminDashboard";
+import LoginPage from "./components/LoginPage";
+import AdminDashboard from "./components/AdminDashboard";
 import { supabase } from "./lib/supabaseClient";
 import "./App.css"; // Now this file exists
 
