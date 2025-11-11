@@ -8,9 +8,7 @@ function RejectAppealModal({ appeal, onClose, onReject }) {
       <div className="modal-content">
         <div className="modal-header">
           <h3>Reject Appeal</h3>
-          <button onClick={onClose} className="close-btn">
-            ×
-          </button>
+          <button onClick={onClose} className="close-btn">×</button>
         </div>
         <div className="reject-appeal-form">
           <label>Reason for rejection...</label>
@@ -22,9 +20,7 @@ function RejectAppealModal({ appeal, onClose, onReject }) {
           />
         </div>
         <div className="modal-actions">
-          <button onClick={onClose} className="btn-outline">
-            Cancel
-          </button>
+          <button onClick={onClose} className="btn-outline">Cancel</button>
           <button
             onClick={() => onReject(reason)}
             className="btn-danger"

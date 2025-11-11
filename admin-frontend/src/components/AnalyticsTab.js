@@ -30,7 +30,6 @@ function AnalyticsTab() {
     end: "",
   });
 
-  // Set default custom dates to last 30 days
   useEffect(() => {
     const endDate = new Date();
     const startDate = new Date();
@@ -38,7 +37,6 @@ function AnalyticsTab() {
 
     setCustomEndDate(formatDateForInput(endDate));
     setCustomStartDate(formatDateForInput(startDate));
-    // Also set applied dates to default
     setAppliedCustomDates({
       start: formatDateForInput(startDate),
       end: formatDateForInput(endDate),
@@ -49,12 +47,10 @@ function AnalyticsTab() {
     fetchAnalyticsData();
   }, [timeRange, chartView, appliedCustomDates]);
 
-  // Format date for input field (YYYY-MM-DD)
   const formatDateForInput = (date) => {
     return date.toISOString().split("T")[0];
   };
 
-  // Format date for display (DD/MM/YYYY)
   const formatDateForDisplay = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -64,7 +60,6 @@ function AnalyticsTab() {
     return `${day}/${month}/${year}`;
   };
 
-  // Format date range for week display (3 Oct - 9 Oct)
   const formatWeekRange = (startDate, endDate) => {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -74,15 +69,12 @@ function AnalyticsTab() {
     const endDay = end.getDate();
     const endMonth = end.toLocaleDateString("en-US", { month: "short" });
 
-    // If same month: "3 - 9 Oct"
     if (startMonth === endMonth) {
       return `${startDay} - ${endDay} ${startMonth}`;
     }
-    // Different months: "28 Mar - 3 Apr"
     return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
   };
 
-  // Helper function to find the most common value in an array
   const findMostCommonValue = (arr) => {
     if (!arr.length) return null;
 
@@ -114,19 +106,18 @@ function AnalyticsTab() {
       ) {
         startDate = new Date(appliedCustomDates.start);
         endDate = new Date(appliedCustomDates.end);
-        // Set end date to end of day (but don't add extra day)
         endDate.setHours(23, 59, 59, 999);
       } else {
         endDate = new Date();
-        endDate.setHours(23, 59, 59, 999); // Include today
+        endDate.setHours(23, 59, 59, 999);
         startDate = new Date();
 
         switch (timeRange) {
           case "7days":
-            startDate.setDate(endDate.getDate() - 6); // -6 to include today and 6 days back = 7 days total
+            startDate.setDate(endDate.getDate() - 6);
             break;
           case "30days":
-            startDate.setDate(endDate.getDate() - 29); // -29 to include today and 29 days back = 30 days total
+            startDate.setDate(endDate.getDate() - 29);
             break;
           default:
             startDate.setDate(endDate.getDate() - 6);
@@ -134,36 +125,21 @@ function AnalyticsTab() {
         startDate.setHours(0, 0, 0, 0);
       }
 
-      console.log("Fetching data for range:", {
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-        timeRange,
-        chartView,
-      });
-
-      // Fetch incidents within date range with user information
       const { data: incidentsData, error: incidentsError } = await supabase
         .from("incident_report")
-        .select(
-          `
-          *,
-          users:user_id (name, email)
-        `
-        )
+        .select("*, users:user_id (name, email)")
         .gte("createdAt", startDate.toISOString())
         .lte("createdAt", endDate.toISOString())
         .order("createdAt", { ascending: false });
 
       if (incidentsError) throw incidentsError;
 
-      // Fetch users
       const { data: usersData, error: usersError } = await supabase
         .from("users")
-        .select("userid, name, status, last_active");
+        .select("userid, name, status, last_active, role");
 
       if (usersError) throw usersError;
 
-      // Process analytics data
       const processedData = processAnalyticsData(
         incidentsData || [],
         usersData || [],
@@ -182,7 +158,6 @@ function AnalyticsTab() {
   const handleTimeRangeChange = (range) => {
     setTimeRange(range);
     setShowCustomDate(range === "custom");
-    // Reset chart view to days when changing time range
     if (range !== "custom") {
       setChartView("days");
     }
@@ -210,7 +185,6 @@ function AnalyticsTab() {
       return;
     }
 
-    // Store the applied dates in a separate state
     setAppliedCustomDates({
       start: customStartDate,
       end: customEndDate,
@@ -238,12 +212,10 @@ function AnalyticsTab() {
     }
   };
 
-  // Get max date for date inputs (today)
   const getMaxDate = () => {
     return new Date().toISOString().split("T")[0];
   };
 
-  // Get min date for date inputs (reasonable past date, e.g., 5 years ago)
   const getMinDate = () => {
     const minDate = new Date();
     minDate.setFullYear(minDate.getFullYear() - 5);
@@ -257,10 +229,28 @@ function AnalyticsTab() {
     startDate,
     endDate
   ) => {
-    const totalReports = incidents.length;
-    const activeUsers = users.filter((user) => user.status === "active").length;
+    const regularUserIncidents = incidents.filter((incident) => {
+      const user = users.find((u) => u.userid === incident.user_id);
+      return user && user.role !== "admin" && user.role !== "moderator";
+    });
 
-    // Calculate approval/rejection rates
+    const adminModIncidents = incidents.filter((incident) => {
+      const user = users.find((u) => u.userid === incident.user_id);
+      return user && (user.role === "admin" || user.role === "moderator");
+    });
+
+    const totalReports = incidents.length;
+    const regularUserReports = regularUserIncidents.length;
+    const adminModReports = adminModIncidents.length;
+
+    const regularUsers = users.filter(
+      (user) => user.role !== "admin" && user.role !== "moderator"
+    );
+
+    const activeUsers = regularUsers.filter(
+      (user) => user.status === "active"
+    ).length;
+
     const approved = incidents.filter(
       (incident) => incident["status"] === "approved"
     ).length;
@@ -279,7 +269,6 @@ function AnalyticsTab() {
     const rejectionRate =
       totalReports > 0 ? Math.round((rejected / totalReports) * 100) : 0;
 
-    // Calculate report accuracy (based on verified tags)
     const verifiedReports = incidents.filter(
       (incident) =>
         incident["tags"] && incident["tags"].toLowerCase().includes("verified")
@@ -287,24 +276,25 @@ function AnalyticsTab() {
     const reportAccuracy =
       totalReports > 0 ? Math.round((verifiedReports / totalReports) * 100) : 0;
 
-    // Calculate average reports per user
-    const reportsByUser = {};
-    incidents.forEach((incident) => {
+    const regularUserReportsCount = {};
+    regularUserIncidents.forEach((incident) => {
       const userId = incident["user_id"];
-      reportsByUser[userId] = (reportsByUser[userId] || 0) + 1;
+      regularUserReportsCount[userId] =
+        (regularUserReportsCount[userId] || 0) + 1;
     });
+
     const avgReportsPerUser =
-      Object.keys(reportsByUser).length > 0
-        ? Math.round((totalReports / Object.keys(reportsByUser).length) * 10) /
-          10
+      Object.keys(regularUserReportsCount).length > 0
+        ? Math.round(
+            (regularUserReports / Object.keys(regularUserReportsCount).length) *
+              10
+          ) / 10
         : 0;
 
-    // Get hotspots (most common locations) - FIXED: case insensitive
     const locationCounts = {};
     incidents.forEach((incident) => {
       const location = (incident["location"] || "Unknown Location").trim();
       if (location) {
-        // Convert to lowercase for case-insensitive grouping
         const normalizedLocation = location.toLowerCase();
         locationCounts[normalizedLocation] =
           (locationCounts[normalizedLocation] || 0) + 1;
@@ -313,7 +303,6 @@ function AnalyticsTab() {
 
     const hotspots = Object.entries(locationCounts)
       .map(([normalizedLocation, count]) => {
-        // Find the most common casing for display
         const locations = incidents
           .filter(
             (incident) =>
@@ -321,24 +310,20 @@ function AnalyticsTab() {
           )
           .map((incident) => incident["location"] || "Unknown Location");
 
-        // Use the most frequent casing, or first found if all equal
         const displayLocation = findMostCommonValue(locations) || locations[0];
 
         return {
           location: displayLocation,
-          normalizedLocation, // keep for reference if needed
           incidents: count,
         };
       })
       .sort((a, b) => b.incidents - a.incidents)
       .slice(0, 5);
 
-    // Get incident type distribution - FIXED: case insensitive
     const typeCounts = {};
     incidents.forEach((incident) => {
       const type = (incident["incidentType"] || "Unknown").trim();
       if (type) {
-        // Convert to lowercase for case-insensitive grouping
         const normalizedType = type.toLowerCase();
         typeCounts[normalizedType] = (typeCounts[normalizedType] || 0) + 1;
       }
@@ -346,7 +331,6 @@ function AnalyticsTab() {
 
     const incidentTypes = Object.entries(typeCounts)
       .map(([normalizedType, count]) => {
-        // Find the most common casing for display
         const types = incidents
           .filter(
             (incident) =>
@@ -354,18 +338,15 @@ function AnalyticsTab() {
           )
           .map((incident) => incident["incidentType"] || "Unknown");
 
-        // Use the most frequent casing, or first found if all equal
         const displayType = findMostCommonValue(types) || types[0];
 
         return {
           type: displayType,
-          normalizedType, // keep for reference if needed
           count,
         };
       })
       .sort((a, b) => b.count - a.count);
 
-    // Get severity distribution
     const severityCounts = {};
     incidents.forEach((incident) => {
       const severity = incident["severity"] || "Unknown";
@@ -376,9 +357,8 @@ function AnalyticsTab() {
       .map(([severity, count]) => ({ severity, count }))
       .sort((a, b) => b.count - a.count);
 
-    // Get top contributors
     const userReports = {};
-    incidents.forEach((incident) => {
+    regularUserIncidents.forEach((incident) => {
       const userId = incident["user_id"];
       userReports[userId] = (userReports[userId] || 0) + 1;
     });
@@ -395,7 +375,6 @@ function AnalyticsTab() {
       .sort((a, b) => b.reports - a.reports)
       .slice(0, 5);
 
-    // Get daily/weekly reports based on range and chart view
     const dailyReports = getTimeSeriesReports(
       incidents,
       range,
@@ -403,20 +382,19 @@ function AnalyticsTab() {
       endDate
     );
 
-    // Status distribution
     const statusDistribution = [
       { status: "Approved", count: approved, color: "#10b981" },
       { status: "Rejected", count: rejected, color: "#ef4444" },
       { status: "Pending", count: pending, color: "#f59e0b" },
     ];
 
-    // In the processAnalyticsData function, replace the photos calculation with:
     const reportingEngagementRate =
       activeUsers > 0
-        ? Math.round((Object.keys(reportsByUser).length / activeUsers) * 100)
+        ? Math.round(
+            (Object.keys(regularUserReportsCount).length / activeUsers) * 100
+          )
         : 0;
 
-    // Recent activity (last 5 reports)
     const recentActivity = incidents.slice(0, 5).map((incident) => ({
       id: incident.id,
       type: incident["incidentType"],
@@ -429,6 +407,8 @@ function AnalyticsTab() {
 
     return {
       totalReports,
+      regularUserReports,
+      adminModReports,
       activeUsers,
       reportAccuracy,
       avgReportsPerUser,
@@ -441,7 +421,7 @@ function AnalyticsTab() {
       statusDistribution,
       severityDistribution,
       reportingEngagementRate,
-      usersWhoReported: Object.keys(reportsByUser).length,
+      usersWhoReported: Object.keys(regularUserReportsCount).length,
       recentActivity,
       approved,
       rejected,
@@ -455,23 +435,11 @@ function AnalyticsTab() {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
-    console.log("Generating time series for:", {
-      range,
-      chartView,
-      start: start.toISOString(),
-      end: end.toISOString(),
-      incidentCount: incidents.length,
-    });
-
-    // For weekly view - group by weeks
     if (chartView === "weeks" && (range === "custom" || range === "30days")) {
       const weeks = [];
       let currentWeekStart = new Date(start);
 
-      // For custom dates, start from the exact start date
-      // For 30 days, calculate proper weeks
       if (range === "30days") {
-        // For 30 days, start from 30 days ago
         currentWeekStart = new Date();
         currentWeekStart.setDate(currentWeekStart.getDate() - 29);
         currentWeekStart.setHours(0, 0, 0, 0);
@@ -483,7 +451,6 @@ function AnalyticsTab() {
         weekEnd.setDate(weekEnd.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
 
-        // Ensure weekEnd doesn't exceed the selected end date
         const actualWeekEnd = weekEnd > end ? new Date(end) : weekEnd;
 
         const weekReports = incidents.filter((incident) => {
@@ -491,11 +458,6 @@ function AnalyticsTab() {
             const incidentDate = new Date(incident["createdAt"]);
             return incidentDate >= weekStart && incidentDate <= actualWeekEnd;
           } catch (error) {
-            console.error(
-              "Error parsing incident date:",
-              incident["createdAt"],
-              error
-            );
             return false;
           }
         }).length;
@@ -510,19 +472,15 @@ function AnalyticsTab() {
           endDate: actualWeekEnd,
         });
 
-        // Move to next week (7 days from current start)
         currentWeekStart = new Date(weekStart);
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
         currentWeekStart.setHours(0, 0, 0, 0);
 
-        // If we've moved past the end date, break
         if (currentWeekStart > end) break;
       }
 
       timeSeries = weeks;
-      console.log("Weekly time series:", weeks);
     } else {
-      // Group by day
       let currentDate, lastDate;
 
       if (range === "custom") {
@@ -531,7 +489,6 @@ function AnalyticsTab() {
         lastDate = new Date(end);
         lastDate.setHours(23, 59, 59, 999);
       } else {
-        // For predefined ranges, calculate the dates
         const days = range === "7days" ? 7 : 30;
         currentDate = new Date();
         currentDate.setDate(currentDate.getDate() - (days - 1));
@@ -543,41 +500,30 @@ function AnalyticsTab() {
       const diffTime = Math.abs(lastDate - currentDate);
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-      console.log(
-        "Daily view - days:",
-        diffDays,
-        "from",
-        currentDate,
-        "to",
-        lastDate
-      );
-
       for (let i = 0; i < diffDays; i++) {
         const date = new Date(currentDate);
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split("T")[0];
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
 
         const dayReports = incidents.filter((incident) => {
           try {
-            return (
-              incident["createdAt"] && incident["createdAt"].startsWith(dateStr)
-            );
+            const incidentDate = new Date(incident["createdAt"]);
+            return incidentDate >= date && incidentDate < nextDate;
           } catch (error) {
-            console.error(
-              "Error filtering incident by date:",
-              incident["createdAt"],
-              error
-            );
             return false;
           }
         }).length;
 
+        const displayDate = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          ...(diffDays <= 7 ? { weekday: "short" } : {}),
+        });
+
         timeSeries.push({
-          date: date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            ...(diffDays <= 7 ? { weekday: "short" } : {}),
-          }),
+          date: displayDate,
           fullDate: formatDateForDisplay(dateStr),
           reports: dayReports,
           startDate: date,
@@ -586,7 +532,6 @@ function AnalyticsTab() {
       }
     }
 
-    console.log("Final time series:", timeSeries);
     return timeSeries;
   };
 
@@ -652,7 +597,6 @@ function AnalyticsTab() {
         </button>
       </div>
 
-      {/* Custom Date Range Selector */}
       {showCustomDate && (
         <div className="custom-date-range">
           <div className="date-inputs">
@@ -689,16 +633,11 @@ function AnalyticsTab() {
         </div>
       )}
 
-      {/* Date Range Display */}
       <div className="date-range-display">
         <h3>Analytics: {analyticsData.dateRangeLabel}</h3>
-        <p className="date-range-subtitle">
-          {analyticsData.totalReports} total reports in selected period
-        </p>
       </div>
 
       <div className="analytics-grid">
-        {/* Key Metrics */}
         <div className="analytics-stats">
           <div className="analytics-stat">
             <h4>Total Reports</h4>
@@ -708,7 +647,7 @@ function AnalyticsTab() {
           <div className="analytics-stat">
             <h4>Active Users</h4>
             <div className="stat-number">{analyticsData.activeUsers}</div>
-            <small>Currently active</small>
+            <small>Regular users only</small>
           </div>
           <div className="analytics-stat">
             <h4>Report Accuracy</h4>
@@ -718,14 +657,16 @@ function AnalyticsTab() {
           <div className="analytics-stat">
             <h4>Avg Reports/User</h4>
             <div className="stat-number">{analyticsData.avgReportsPerUser}</div>
-            <small>Average contribution</small>
+            <small>Regular users only</small>
           </div>
           <div className="analytics-stat">
             <h4>Reporting Engagement</h4>
             <div className="stat-number">
               {analyticsData.reportingEngagementRate}%
             </div>
-            <small>{analyticsData.usersWhoReported} users reported</small>
+            <small>
+              {analyticsData.usersWhoReported} regular users reported
+            </small>
           </div>
           <div className="analytics-stat">
             <h4>Approval Rate</h4>
@@ -734,12 +675,10 @@ function AnalyticsTab() {
           </div>
         </div>
 
-        {/* Reports Chart - Always show if there are reports */}
         {analyticsData.dailyReports.length > 0 ? (
           <div className="analytics-section">
             <div className="chart-header">
               <h3>Reports Timeline</h3>
-              {/* Chart View Toggle - Show for custom dates and 30 days */}
               {(timeRange === "custom" || timeRange === "30days") && (
                 <div className="chart-view-toggle">
                   <button
@@ -780,7 +719,7 @@ function AnalyticsTab() {
                             100
                         )}%`,
                       }}
-                      title={`${day.reports} reports on ${day.fullDate}`}
+                      title={`${day.reports} reports on ${day.date}`}
                     ></div>
                     <div className="bar-label">
                       <span className="bar-date">{day.date}</span>
@@ -800,8 +739,6 @@ function AnalyticsTab() {
           </div>
         )}
 
-        {/* Rest of the components remain the same */}
-        {/* Status & Severity Distribution */}
         <div className="distribution-grid">
           <div className="analytics-section">
             <h3>Report Status Distribution</h3>
@@ -884,7 +821,6 @@ function AnalyticsTab() {
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="analytics-section">
           <h3>Recent Activity</h3>
           <div className="recent-activity">
@@ -987,4 +923,3 @@ function AnalyticsTab() {
 }
 
 export default AnalyticsTab;
-// fully working

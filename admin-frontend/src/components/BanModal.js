@@ -9,9 +9,7 @@ function BanModal({ user, onClose, onBan }) {
       <div className="modal-content">
         <div className="modal-header">
           <h3>Ban {user?.username}?</h3>
-          <button onClick={onClose} className="close-btn">
-            ×
-          </button>
+          <button onClick={onClose} className="close-btn">×</button>
         </div>
         <div className="ban-form">
           <label>Select Reason:</label>
@@ -53,9 +51,7 @@ function BanModal({ user, onClose, onBan }) {
           />
         </div>
         <div className="modal-actions">
-          <button onClick={onClose} className="btn-outline">
-            Cancel
-          </button>
+          <button onClick={onClose} className="btn-outline">Cancel</button>
           <button
             onClick={() => onBan(reason, description)}
             className="btn-danger"

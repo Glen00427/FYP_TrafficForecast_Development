@@ -4,48 +4,44 @@ import AIAnalysisModal from "./AIAnalysisModal";
 import ApproveModal from "./ApproveModal";
 import RejectModal from "./RejectModal";
 import AddTagsModal from "./AddTagsModal";
-import RetractIncidentModal from "./RetractIncidentModal"; // Add this import
+import RetractIncidentModal from "./RetractIncidentModal";
 
 function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("pending"); // Default to pending only
+  const [statusFilter, setStatusFilter] = useState("pending");
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [showAI, setShowAI] = useState(false);
   const [showApprove, setShowApprove] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [showTags, setShowTags] = useState(false);
-  const [showRetract, setShowRetract] = useState(false); // Add this state
+  const [showRetract, setShowRetract] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [incidentsPerPage] = useState(5);
 
-  // Use the incidents prop directly
   const displayIncidents = incidents;
 
   const handleAIAnalysis = (incident) => {
-    console.log("🤖 AI Analysis clicked for:", incident);
     setSelectedIncident(incident);
     setShowAI(true);
   };
 
   const handleApprove = (incident) => {
-    console.log("🟢 Approve button clicked for:", incident);
     setSelectedIncident(incident);
     setShowApprove(true);
   };
 
   const handleReject = (incident) => {
-    console.log("🔴 Reject button clicked for:", incident);
     setSelectedIncident(incident);
     setShowReject(true);
   };
 
   const handleAddTags = (incident) => {
-    console.log("🏷️ Add Tags clicked for:", incident);
     setSelectedIncident(incident);
     setShowTags(true);
   };
 
   const handleRetract = (incident) => {
-    console.log("↩️ Retract Decision clicked for:", incident);
     setSelectedIncident(incident);
     setShowRetract(true);
   };
@@ -53,13 +49,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const handleApproveIncident = async (tags = []) => {
     if (selectedIncident) {
       try {
-        console.log(
-          "🟢 Approving incident:",
-          selectedIncident.id,
-          "with tags:",
-          tags
-        );
-
         const updatedIncident = await onUpdateIncident(
           selectedIncident.id,
           "approved",
@@ -67,16 +56,13 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         );
 
         if (updatedIncident) {
-          console.log("✅ Incident approved successfully");
-
-          // LOG AUDIT ACTION
           if (onLogAction) {
             await onLogAction(
               "incident_approve",
               `Approved incident report #${selectedIncident.id} at ${selectedIncident.location}`,
               `Tags: ${tags.join(", ")}`,
-              null, // targetUserId
-              selectedIncident.id // targetIncidentId
+              null,
+              selectedIncident.id
             );
           }
         } else {
@@ -86,7 +72,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         setShowApprove(false);
         setSelectedIncident(null);
       } catch (error) {
-        console.error("❌ Error approving incident:", error);
         alert("Failed to approve incident. Please try again.");
       }
     }
@@ -95,16 +80,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const handleRejectIncident = async (reason, tags = []) => {
     if (selectedIncident) {
       try {
-        console.log(
-          "🔴 Rejecting incident:",
-          selectedIncident.id,
-          "Reason:",
-          reason,
-          "Tags:",
-          tags
-        );
-
-        // Update database via parent function - pass both reason and tags
         const updatedIncident = await onUpdateIncident(
           selectedIncident.id,
           "rejected",
@@ -113,16 +88,13 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         );
 
         if (updatedIncident) {
-          console.log("✅ Incident rejected successfully with reason:", reason);
-
-          // LOG AUDIT ACTION
           if (onLogAction) {
             await onLogAction(
               "incident_reject",
               `Rejected incident report #${selectedIncident.id} at ${selectedIncident.location}`,
               `Reason: ${reason} | Tags: ${tags.join(", ")}`,
-              null, // targetUserId
-              selectedIncident.id // targetIncidentId
+              null,
+              selectedIncident.id
             );
           }
         } else {
@@ -132,7 +104,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         setShowReject(false);
         setSelectedIncident(null);
       } catch (error) {
-        console.error("❌ Error rejecting incident:", error);
         alert("Failed to reject incident. Please try again.");
       }
     }
@@ -141,13 +112,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const handleAddTagsToIncident = async (tags) => {
     if (selectedIncident) {
       try {
-        console.log(
-          "🏷️ Adding tags to incident:",
-          selectedIncident.id,
-          "Tags:",
-          tags
-        );
-
         const updatedIncident = await onUpdateIncident(
           selectedIncident.id,
           selectedIncident.status,
@@ -155,16 +119,13 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         );
 
         if (updatedIncident) {
-          console.log("✅ Tags added successfully");
-
-          // LOG AUDIT ACTION
           if (onLogAction) {
             await onLogAction(
               "incident_tag",
               `Added tags to incident report #${selectedIncident.id}`,
               `Tags: ${tags.join(", ")} | Status: ${selectedIncident.status}`,
-              null, // targetUserId
-              selectedIncident.id // targetIncidentId
+              null,
+              selectedIncident.id
             );
           }
         } else {
@@ -174,7 +135,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         setShowTags(false);
         setSelectedIncident(null);
       } catch (error) {
-        console.error("❌ Error adding tags:", error);
         alert("Failed to add tags. Please try again.");
       }
     }
@@ -183,30 +143,21 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
   const handleRetractIncident = async () => {
     if (selectedIncident) {
       try {
-        console.log(
-          "↩️ Retracting decision for incident:",
-          selectedIncident.id
-        );
-
-        // Reset the incident to pending status and clear verification data
         const updatedIncident = await onUpdateIncident(
           selectedIncident.id,
           "pending",
-          [], // Clear tags or keep existing?
-          null // Clear rejection reason
+          [],
+          null
         );
 
         if (updatedIncident) {
-          console.log("✅ Decision retracted successfully");
-
-          // LOG AUDIT ACTION
           if (onLogAction) {
             await onLogAction(
               "incident_retract",
               `Retracted decision for incident report #${selectedIncident.id}`,
-              `Previous status: ${selectedIncident.status} | Reset to pending`,
-              null, // targetUserId
-              selectedIncident.id // targetIncidentId
+              `Previous status: ${selectedIncident.status} | Reset to pending | Tags cleared`,
+              null,
+              selectedIncident.id
             );
           }
         } else {
@@ -216,13 +167,11 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         setShowRetract(false);
         setSelectedIncident(null);
       } catch (error) {
-        console.error("❌ Error retracting decision:", error);
         alert("Failed to retract decision. Please try again.");
       }
     }
   };
 
-  // Filter incidents - only show pending by default, but allow viewing others via filter
   const filteredIncidents = displayIncidents.filter((incident) => {
     const searchTermLower = searchTerm.toLowerCase();
 
@@ -241,23 +190,69 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
 
     const matchesStatus =
       statusFilter === "all" || incident.status === statusFilter;
-
     const matchesType =
       typeFilter === "all" || incident.incidentType === typeFilter;
 
     return matchesSearch && matchesStatus && matchesType;
   });
 
-  // Sort incidents by createdAt date (newest first)
   const sortedIncidents = [...filteredIncidents].sort((a, b) => {
     const dateA = new Date(a.createdAt);
     const dateB = new Date(b.createdAt);
-    return dateB - dateA; // Newest first (descending order)
+    return dateB - dateA;
   });
+
+  const indexOfLastIncident = currentPage * incidentsPerPage;
+  const indexOfFirstIncident = indexOfLastIncident - incidentsPerPage;
+  const currentIncidents = sortedIncidents.slice(
+    indexOfFirstIncident,
+    indexOfLastIncident
+  );
+  const totalPages = Math.ceil(sortedIncidents.length / incidentsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxPagesToShow = 3;
+
+    if (totalPages <= maxPagesToShow + 2) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      if (currentPage <= maxPagesToShow) {
+        for (let i = 1; i <= maxPagesToShow; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push("...");
+        pageNumbers.push(totalPages);
+      } else if (currentPage >= totalPages - maxPagesToShow + 1) {
+        pageNumbers.push(1);
+        pageNumbers.push("...");
+        for (let i = totalPages - maxPagesToShow + 1; i <= totalPages; i++) {
+          pageNumbers.push(i);
+        }
+      } else {
+        pageNumbers.push(1);
+        pageNumbers.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push("...");
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [statusFilter, typeFilter, searchTerm]);
 
   return (
     <div className="incidents-tab">
-      {/* Updated Filters Layout - Dropdowns below search bar */}
       <div className="incident-filters-column">
         <div className="incident-search-container">
           <input
@@ -294,7 +289,6 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         </div>
       </div>
 
-      {/* Status Summary */}
       <div className="status-summary">
         <span className="status-count pending">
           Pending:{" "}
@@ -314,8 +308,8 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
       </div>
 
       <div className="incidents-list">
-        {sortedIncidents.length > 0 ? (
-          sortedIncidents.map((incident, index) => (
+        {currentIncidents.length > 0 ? (
+          currentIncidents.map((incident, index) => (
             <IncidentCard
               key={
                 incident.id ||
@@ -326,7 +320,7 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
               onApprove={handleApprove}
               onReject={handleReject}
               onAddTags={handleAddTags}
-              onRetract={handleRetract} // Pass the retract handler
+              onRetract={handleRetract}
             />
           ))
         ) : (
@@ -343,7 +337,50 @@ function IncidentsTab({ incidents, onUpdateIncident, onLogAction }) {
         )}
       </div>
 
-      {/* Modals */}
+      {sortedIncidents.length > incidentsPerPage && (
+        <div className="table-footer">
+          <span>
+            Showing {currentIncidents.length} of {sortedIncidents.length}{" "}
+            incidents
+          </span>
+          <div className="pagination">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="pagination-btn"
+            >
+              Previous
+            </button>
+
+            {getPageNumbers().map((number, index) =>
+              number === "..." ? (
+                <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                  ⋯
+                </span>
+              ) : (
+                <button
+                  key={number}
+                  onClick={() => paginate(number)}
+                  className={`pagination-btn ${
+                    currentPage === number ? "active" : ""
+                  }`}
+                >
+                  {number}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="pagination-btn"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {showAI && (
         <AIAnalysisModal
           incident={selectedIncident}

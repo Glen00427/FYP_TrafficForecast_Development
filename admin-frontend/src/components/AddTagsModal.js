@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 function AddTagsModal({ incident, onClose, onAddTags }) {
-  // Convert existing tags from text to array for display
   const initialTags = incident.tags
     ? incident.tags
         .split(",")
@@ -12,7 +11,6 @@ function AddTagsModal({ incident, onClose, onAddTags }) {
   const [tags, setTags] = useState(initialTags.join(", "));
 
   const handleSubmit = () => {
-    // Convert back to comma-separated text for database
     const tagsArray = tags
       .split(",")
       .map((tag) => tag.trim())

@@ -13,6 +13,7 @@ export default function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState("home");
   const [incidents, setIncidents] = useState([]);
   const [users, setUsers] = useState([]);
+  const [appeals, setAppeals] = useState([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingReviews: 0,
@@ -22,43 +23,37 @@ export default function AdminDashboard({ user, onLogout }) {
     verifiedReports: 0,
   });
   const [loading, setLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-  const [debugInfo, setDebugInfo] = useState("");
 
-  // Use the actual logged-in admin ID
   const currentAdminId = user?.userid;
 
-  // Tabs without Bulk Actions
-  const tabs = [
-    "Home",
-    "Incidents",
-    "Users",
-    "Analytics",
-    "Appeals",
-    "Audit Logs",
-    "Export",
-  ];
+  const getTabsForRole = (role) => {
+    if (role === "admin") {
+      return [
+        "Home",
+        "Incidents",
+        "Users",
+        "Analytics",
+        "Appeals",
+        "Audit Logs",
+        "Export",
+      ];
+    }
+    if (role === "moderator") {
+      return ["Home", "Incidents", "Appeals"];
+    }
+    return [];
+  };
 
-  // Fetch initial data from Supabase
+  const tabs = getTabsForRole(user?.role);
+
   useEffect(() => {
     fetchData();
-  }, []);
-
-  // Set up periodic refreshing every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchData();
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      console.log("🔄 Fetching data from Supabase...");
 
-      // Fetch incidents with user information AND admin verifier information
       const { data: incidentsData, error: incidentsError } = await supabase
         .from("incident_report")
         .select(
@@ -72,10 +67,7 @@ export default function AdminDashboard({ user, onLogout }) {
         )
         .order("createdAt", { ascending: false });
 
-      if (incidentsError) {
-        console.error("❌ Error fetching incidents:", incidentsError);
-        setDebugInfo(`Incidents Error: ${incidentsError.message}`);
-      } else {
+      if (!incidentsError) {
         const processedIncidents = (incidentsData || []).map((incident) => {
           const rawStatus = incident.status?.toLowerCase();
           let normalizedStatus = "pending";
@@ -90,53 +82,48 @@ export default function AdminDashboard({ user, onLogout }) {
           };
         });
 
-        console.log(`📊 Fetched ${processedIncidents.length} incidents`);
         setIncidents(processedIncidents);
       }
 
-      // Fetch users from users table
       const { data: usersData, error: usersError } = await supabase
         .from("users")
         .select(
           "userid, name, email, password, phone, status, role, last_active, ban_reason"
         );
 
-      if (usersError) {
-        console.error("❌ Error fetching users:", usersError);
-        setDebugInfo(`Users Error: ${usersError.message}`);
-        return;
+      if (!usersError) {
+        setUsers(usersData || []);
       }
 
-      console.log(`👥 Fetched ${usersData?.length || 0} users`);
-      setUsers(usersData || []);
+      const { data: appealsData, error: appealsError } = await supabase
+        .from("appeals")
+        .select("appeals_id, status, appeal_type, created_at")
+        .eq("status", "pending");
 
-      // Calculate stats from real data
-      calculateStats(incidentsData || [], usersData || []);
+      if (!appealsError) {
+        setAppeals(appealsData || []);
+      }
 
-      // Update last updated timestamp
-      setLastUpdated(new Date());
-      setDebugInfo(
-        `✅ Success: ${usersData?.length || 0} users, ${
-          incidentsData?.length || 0
-        } incidents`
-      );
+      calculateStats(incidentsData || [], usersData || [], appealsData || []);
     } catch (error) {
-      console.error("❌ Error fetching data:", error);
-      setDebugInfo(`Fetch Error: ${error.message}`);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateStats = (incidentsData, usersData) => {
-    const today = new Date().toISOString().split("T")[0];
+  const calculateStats = (incidentsData, usersData, appealsData) => {
+    const today = new Date();
+    const todayStart = new Date(today);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
 
-    let todaysReports = 0;
-    if (incidentsData.length > 0) {
-      todaysReports = incidentsData.filter(
-        (incident) => incident.createdAt && incident.createdAt.startsWith(today)
-      ).length;
-    }
+    const todaysReports = incidentsData.filter((incident) => {
+      if (!incident.createdAt) return false;
+      const createdDate = new Date(incident.createdAt);
+      return createdDate >= todayStart && createdDate <= todayEnd;
+    }).length;
 
     const pendingReviews = incidentsData.filter(
       (incident) =>
@@ -149,13 +136,14 @@ export default function AdminDashboard({ user, onLogout }) {
       (user) => user.status === "banned"
     ).length;
 
-    const verifiedReports = incidentsData.filter(
-      (incident) => incident.verified_at !== null
-    ).length;
+    const verifiedReports = incidentsData.filter((incident) => {
+      if (!incident.verified_at) return false;
+      const verificationDate = new Date(incident.verified_at);
+      return verificationDate >= todayStart && verificationDate <= todayEnd;
+    }).length;
 
-    const pendingAppeals = incidentsData.filter(
-      (incident) =>
-        incident.status === "appeal" || incident.appeal_status === "pending"
+    const pendingAppeals = appealsData.filter(
+      (appeal) => appeal.status === "pending"
     ).length;
 
     const newStats = {
@@ -167,11 +155,9 @@ export default function AdminDashboard({ user, onLogout }) {
       verifiedReports,
     };
 
-    console.log("🎯 Final stats:", newStats);
     setStats(newStats);
   };
 
-  // Function to update incident status in Supabase with verification tracking
   const updateIncidentStatus = async (
     incidentId,
     status,
@@ -179,30 +165,25 @@ export default function AdminDashboard({ user, onLogout }) {
     reason = null
   ) => {
     try {
-      console.log("🔄 Updating incident:", {
-        incidentId,
-        status,
-        tags,
-        reason,
-      });
-
       const normalizedStatus = status?.toLowerCase();
       const validStatus =
         normalizedStatus === "approved" || normalizedStatus === "rejected"
           ? normalizedStatus
           : "pending";
-
       const tagsValue = Array.isArray(tags) ? tags.join(", ") : tags;
 
       const updateData = {
         status: validStatus,
         tags: tagsValue,
-        verified_at: new Date().toISOString(),
-        verified_by: currentAdminId,
+        verified_at:
+          normalizedStatus === "pending" ? null : new Date().toISOString(),
+        verified_by: normalizedStatus === "pending" ? null : currentAdminId,
       };
 
       if (reason) {
         updateData.reason = reason;
+      } else if (normalizedStatus === "pending") {
+        updateData.reason = null;
       }
 
       const { data, error } = await supabase
@@ -211,36 +192,16 @@ export default function AdminDashboard({ user, onLogout }) {
         .eq("id", incidentId)
         .select();
 
-      if (error) {
-        console.error("❌ Supabase error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("✅ Incident updated successfully:", data[0]);
-
-      setIncidents((prevIncidents) =>
-        prevIncidents.map((incident) =>
-          incident.id === incidentId
-            ? {
-                ...incident,
-                status: validStatus,
-                tags: tagsValue,
-                reason: reason || incident.reason,
-                verified_at: new Date().toISOString(),
-                verified_by: currentAdminId,
-              }
-            : incident
-        )
-      );
-
+      await fetchData();
       return data[0];
     } catch (error) {
-      console.error("❌ Error updating incident:", error);
+      console.error("Error updating incident:", error);
       return null;
     }
   };
 
-  // Function to update user status in Supabase
   const updateUserStatus = async (
     userId,
     status = null,
@@ -248,91 +209,47 @@ export default function AdminDashboard({ user, onLogout }) {
     newRole = null
   ) => {
     try {
-      console.log("🔄 Updating user status:", {
-        userId,
-        status,
-        reason,
-        newRole,
-      });
-
       const updateData = {};
 
-      // Update status if provided (not null)
-      if (status !== null) {
-        updateData.status = status;
-      }
-
-      // Update role if provided (not null)
-      if (newRole !== null) {
-        updateData.role = newRole;
-      }
-
-      // Add ban reason if provided and not null
-      if (reason !== null) {
-        updateData.ban_reason = reason;
-      }
-
-      // If unbanning (status explicitly set to 'active'), clear ban reason
-      if (status === "active") {
-        updateData.ban_reason = null;
-      }
-
-      console.log("📝 Update data:", updateData);
+      if (status !== null) updateData.status = status;
+      if (newRole !== null) updateData.role = newRole;
+      if (reason !== null) updateData.ban_reason = reason;
+      if (status === "active") updateData.ban_reason = null;
 
       const { error } = await supabase
         .from("users")
         .update(updateData)
         .eq("userid", userId);
 
-      if (error) {
-        console.error("❌ Supabase error:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("✅ User updated successfully");
-
-      // Refresh data after successful update
       await fetchData();
       return true;
     } catch (error) {
-      console.error("❌ Error updating user:", error);
+      console.error("Error updating user:", error);
       return false;
     }
   };
 
-  // Function for updating user role only
   const updateUserRole = async (userId, newRole) => {
     try {
-      console.log("🔄 Updating user role:", { userId, newRole });
-
       const { error } = await supabase
         .from("users")
-        .update({
-          role: newRole,
-        })
+        .update({ role: newRole })
         .eq("userid", userId);
 
-      if (error) {
-        console.error("❌ Supabase error updating role:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("✅ User role updated successfully");
-
-      // Refresh data after successful update
       await fetchData();
       return true;
     } catch (error) {
-      console.error("❌ Error updating user role:", error);
+      console.error("Error updating user role:", error);
       return false;
     }
   };
 
-  // Soft delete function - mark user as inactive
   const deleteUser = async (userId, reason = "") => {
     try {
-      console.log("🔄 Soft deleting user:", { userId, reason });
-
       const { error } = await supabase
         .from("users")
         .update({
@@ -341,25 +258,14 @@ export default function AdminDashboard({ user, onLogout }) {
         })
         .eq("userid", userId);
 
-      if (error) {
-        console.error("❌ Supabase error soft deleting:", error);
-        throw error;
-      }
+      if (error) throw error;
 
-      console.log("✅ User soft deleted successfully");
-
-      // Refresh data after successful update
       await fetchData();
       return true;
     } catch (error) {
-      console.error("❌ Error soft deleting user:", error);
+      console.error("Error soft deleting user:", error);
       return false;
     }
-  };
-
-  // Manual refresh function
-  const handleManualRefresh = () => {
-    fetchData();
   };
 
   const logAuditAction = async (
@@ -370,8 +276,6 @@ export default function AdminDashboard({ user, onLogout }) {
     targetIncidentId = null
   ) => {
     try {
-      console.log("📝 Logging audit action:", { actionType, description });
-
       const { data, error } = await supabase
         .from("audit_logs")
         .insert({
@@ -386,14 +290,13 @@ export default function AdminDashboard({ user, onLogout }) {
         .select();
 
       if (error) {
-        console.error("❌ Supabase insert error:", error);
+        console.error("Supabase insert error:", error);
         return false;
       }
 
-      console.log("✅ Audit action logged successfully:", data);
       return true;
     } catch (error) {
-      console.error("❌ Unexpected error in audit logger:", error);
+      console.error("Unexpected error in audit logger:", error);
       return false;
     }
   };
@@ -401,28 +304,20 @@ export default function AdminDashboard({ user, onLogout }) {
   return (
     <div className="admin-dashboard">
       <header className="admin-header">
-        <div className="header-left">
+        <div></div>
+        <div className="header-center">
           <h1>Admin Dashboard</h1>
           <div className="user-info">
             Welcome, <strong>{user?.name}</strong> ({user?.role})
           </div>
         </div>
-        <div className="header-info">
-          <button onClick={handleManualRefresh} className="btn-outline">
-            Refresh Data
-          </button>
+        <div className="header-right">
           <button onClick={onLogout} className="btn-outline logout-btn">
             Logout
           </button>
-          <div className="last-updated">
-            Last updated: {lastUpdated.toLocaleTimeString()}
-          </div>
-          {loading && <span className="loading">Loading...</span>}
-          {debugInfo && <div className="debug-info">{debugInfo}</div>}
         </div>
       </header>
 
-      {/* Navigation Tabs */}
       <nav className="admin-tabs">
         {tabs.map((tab) => (
           <button
@@ -437,7 +332,6 @@ export default function AdminDashboard({ user, onLogout }) {
         ))}
       </nav>
 
-      {/* Tab Content */}
       <div className="tab-content">
         {activeTab === "home" && (
           <HomeTab stats={stats} users={users} incidents={incidents} />
@@ -449,19 +343,30 @@ export default function AdminDashboard({ user, onLogout }) {
             onLogAction={logAuditAction}
           />
         )}
-        {activeTab === "users" && (
+        {activeTab === "users" && user?.role === "admin" && (
           <UsersTab
             users={users}
             onUpdateUser={updateUserStatus}
             onUpdateRole={updateUserRole}
             onDeleteUser={deleteUser}
             onLogAction={logAuditAction}
+            currentUserRole={user?.role}
           />
         )}
-        {activeTab === "analytics" && <AnalyticsTab />}
-        {activeTab === "appeals" && <AppealsTab onLogAction={logAuditAction} />}
-        {activeTab === "audit_logs" && <AuditLogsTab />}
-        {activeTab === "export" && <ExportTab />}
+        {activeTab === "analytics" && user?.role === "admin" && (
+          <AnalyticsTab />
+        )}
+        {activeTab === "appeals" && (
+          <AppealsTab
+            onLogAction={logAuditAction}
+            currentUser={user}
+            onRefreshData={fetchData}
+          />
+        )}
+        {activeTab === "audit_logs" && user?.role === "admin" && (
+          <AuditLogsTab />
+        )}
+        {activeTab === "export" && user?.role === "admin" && <ExportTab />}
       </div>
     </div>
   );

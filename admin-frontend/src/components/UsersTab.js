@@ -10,6 +10,7 @@ function UsersTab({
   onUpdateRole,
   onDeleteUser,
   onLogAction,
+  currentUserRole,
 }) {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showBanModal, setShowBanModal] = useState(false);
@@ -18,20 +19,19 @@ function UsersTab({
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [searchTerm, setSearchTerm] = useState(""); // Add search term state
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [usersPerPage] = useState(5); // Show 5 users per page
+  const [usersPerPage] = useState(5);
+
+  const isAdmin = currentUserRole === "admin";
 
   const handleBan = (user) => {
-    console.log("🔴 Ban button clicked for user:", user);
     setSelectedUser(user);
     setShowBanModal(true);
   };
 
   const handleUnban = (user) => {
-    console.log("🔴 Unban button clicked for user:", user);
     setSelectedUser(user);
     setShowUnbanModal(true);
   };
@@ -42,11 +42,14 @@ function UsersTab({
   };
 
   const handleRoleChange = (user) => {
+    if (!isAdmin) {
+      alert("Only administrators can change user roles.");
+      return;
+    }
     setSelectedUser(user);
     setShowRoleModal(true);
   };
 
-  // Custom sorting function
   const sortUsers = (users) => {
     const rolePriority = {
       admin: 1,
@@ -66,22 +69,18 @@ function UsersTab({
       const aRole = a.role || "user";
       const bRole = b.role || "user";
 
-      // First sort by status priority
       if (statusPriority[aStatus] !== statusPriority[bStatus]) {
         return statusPriority[aStatus] - statusPriority[bStatus];
       }
 
-      // Then sort by role priority within the same status
       if (rolePriority[aRole] !== rolePriority[bRole]) {
         return rolePriority[aRole] - rolePriority[bRole];
       }
 
-      // Finally sort by name alphabetically
       return (a.name || "").localeCompare(b.name || "");
     });
   };
 
-  // Filter users based on role, status, and search term
   const filteredUsers = users.filter((user) => {
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesStatus =
@@ -96,30 +95,24 @@ function UsersTab({
     return matchesRole && matchesStatus && matchesSearch;
   });
 
-  // Apply custom sorting to filtered users
   const sortedUsers = sortUsers(filteredUsers);
 
-  // Calculate pagination
   const indexOfLastUser = currentPage * usersPerPage;
   const indexOfFirstUser = indexOfLastUser - usersPerPage;
   const currentUsers = sortedUsers.slice(indexOfFirstUser, indexOfLastUser);
   const totalPages = Math.ceil(sortedUsers.length / usersPerPage);
 
-  // Change page
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxPagesToShow = 3;
 
     if (totalPages <= maxPagesToShow + 2) {
-      // Show all pages if total pages are small
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
       }
     } else {
-      // Show first page, current page range, and last page
       if (currentPage <= maxPagesToShow) {
         for (let i = 1; i <= maxPagesToShow; i++) {
           pageNumbers.push(i);
@@ -146,7 +139,6 @@ function UsersTab({
     return pageNumbers;
   };
 
-  // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return "Never";
     try {
@@ -157,7 +149,6 @@ function UsersTab({
     }
   };
 
-  // Get role badge class for styling
   const getRoleBadgeClass = (role) => {
     switch (role) {
       case "admin":
@@ -169,7 +160,6 @@ function UsersTab({
     }
   };
 
-  // Get status badge class for styling
   const getStatusBadgeClass = (status) => {
     const statusLower = (status || "active").toLowerCase();
     switch (statusLower) {
@@ -184,14 +174,23 @@ function UsersTab({
     }
   };
 
-  // Reset to page 1 when filters change
   React.useEffect(() => {
     setCurrentPage(1);
   }, [roleFilter, statusFilter, searchTerm]);
 
+  if (!isAdmin) {
+    return (
+      <div className="users-tab">
+        <div className="no-access">
+          <h3>Access Restricted</h3>
+          <p>User management is only available to administrators.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="users-tab">
-      {/* Users Tab - Now Vertical Layout */}
       <div className="users-filters-column">
         <div className="user-search-container">
           <input
@@ -265,15 +264,15 @@ function UsersTab({
                 <td>{formatDate(user.last_active)}</td>
                 <td>
                   <div className="user-actions">
-                    <button className="btn-outline">View Activity</button>
                     <button
                       onClick={() => handleRoleChange(user)}
                       className="btn-info"
+                      disabled={!isAdmin}
+                      title={!isAdmin ? "Only admins can change roles" : ""}
                     >
                       Change Role
                     </button>
 
-                    {/* Show different actions based on status */}
                     {user.status === "inactive" ? (
                       <button
                         onClick={async () => {
@@ -284,13 +283,12 @@ function UsersTab({
                               "User restored by admin"
                             );
                             if (success && onLogAction) {
-                              // LOG AUDIT ACTION
                               await onLogAction(
                                 "user_restore",
                                 `Restored user: ${user.name} (${user.email})`,
                                 "User account reactivated",
-                                user.userid, // targetUserId
-                                null // targetIncidentId
+                                user.userid,
+                                null
                               );
                             }
                           }
@@ -340,7 +338,6 @@ function UsersTab({
             Showing {currentUsers.length} of {sortedUsers.length} users
           </span>
           <div className="pagination">
-            {/* Previous button */}
             <button
               onClick={() => paginate(currentPage - 1)}
               disabled={currentPage === 1}
@@ -349,7 +346,6 @@ function UsersTab({
               Previous
             </button>
 
-            {/* Page numbers */}
             {getPageNumbers().map((number, index) =>
               number === "..." ? (
                 <span key={`ellipsis-${index}`} className="pagination-ellipsis">
@@ -368,7 +364,6 @@ function UsersTab({
               )
             )}
 
-            {/* Next button */}
             <button
               onClick={() => paginate(currentPage + 1)}
               disabled={currentPage === totalPages}
@@ -380,7 +375,6 @@ function UsersTab({
         </div>
       </div>
 
-      {/* Modals with Audit Logging */}
       {showBanModal && (
         <BanModal
           user={selectedUser}
@@ -393,13 +387,12 @@ function UsersTab({
                 description
               );
               if (success && onLogAction) {
-                // LOG AUDIT ACTION
                 await onLogAction(
                   "user_ban",
                   `Banned user: ${selectedUser.name} (${selectedUser.email})`,
                   `Reason: ${reason} | Details: ${description}`,
-                  selectedUser.userid, // targetUserId
-                  null // targetIncidentId
+                  selectedUser.userid,
+                  null
                 );
               }
             }
@@ -420,13 +413,12 @@ function UsersTab({
                 reason
               );
               if (success && onLogAction) {
-                // LOG AUDIT ACTION
                 await onLogAction(
                   "user_unban",
                   `Unbanned user: ${selectedUser.name} (${selectedUser.email})`,
                   `Reason: ${reason}`,
-                  selectedUser.userid, // targetUserId
-                  null // targetIncidentId
+                  selectedUser.userid,
+                  null
                 );
               }
             }
@@ -444,13 +436,12 @@ function UsersTab({
               const oldRole = selectedUser.role || "user";
               const success = await onUpdateRole(selectedUser.userid, newRole);
               if (success && onLogAction) {
-                // LOG AUDIT ACTION
                 await onLogAction(
                   "role_change",
                   `Changed role for user: ${selectedUser.name} (${selectedUser.email})`,
                   `From: ${oldRole} → To: ${newRole}`,
-                  selectedUser.userid, // targetUserId
-                  null // targetIncidentId
+                  selectedUser.userid,
+                  null
                 );
               }
             }
@@ -467,13 +458,12 @@ function UsersTab({
             if (onDeleteUser && selectedUser) {
               const success = await onDeleteUser(selectedUser.userid, reason);
               if (success && onLogAction) {
-                // LOG AUDIT ACTION
                 await onLogAction(
                   "user_delete",
                   `Deleted user: ${selectedUser.name} (${selectedUser.email})`,
                   `Reason: ${reason}`,
-                  selectedUser.userid, // targetUserId
-                  null // targetIncidentId
+                  selectedUser.userid,
+                  null
                 );
               }
             }

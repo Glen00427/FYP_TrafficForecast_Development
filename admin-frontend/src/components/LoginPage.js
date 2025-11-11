@@ -21,67 +21,39 @@ function LoginPage({ onLogin }) {
       setLoading(true);
       setError("");
 
-      console.log("🔐 Attempting login for:", email);
-
-      // Direct database authentication (bypass Supabase Auth)
       const { data: userData, error: userError } = await supabase
         .from("users")
         .select("userid, name, email, password, role, status")
         .eq("email", email.trim().toLowerCase())
         .single();
 
-      console.log("👤 User lookup result:", { userData, userError });
-
       if (userError || !userData) {
         setError("User not found");
         return;
       }
 
-      // Simple password check - in production, use proper hashing!
-      // For now, we'll assume the password in database is plain text
       if (userData.password !== password) {
         setError("Invalid password");
         return;
       }
 
-      // Check if user has admin privileges
       if (userData.role !== "admin" && userData.role !== "moderator") {
         setError("Access denied. Admin privileges required.");
         return;
       }
 
-      // Check if user is active
       if (userData.status !== "active") {
         setError("Account is inactive. Please contact administrator.");
         return;
       }
 
-      console.log("✅ Login successful:", userData);
-
-      // Remove password from user data before passing it around
       const { password: _, ...userWithoutPassword } = userData;
       onLogin(userWithoutPassword);
     } catch (error) {
-      console.error("❌ Unexpected login error:", error);
+      console.error("Login error:", error);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = (role) => {
-    // Use actual users from your database
-    const demoAccounts = {
-      admin: {
-        email: "test2@gmail.com", // Use your actual user email
-        password: "password123", // Use the actual password from your database
-      },
-    };
-
-    const account = demoAccounts[role];
-    if (account) {
-      setEmail(account.email);
-      setPassword(account.password);
     }
   };
 
@@ -142,21 +114,6 @@ function LoginPage({ onLogin }) {
             )}
           </button>
         </form>
-
-        {/* Demo Login Button */}
-        <div className="demo-section">
-          <p className="demo-label">Quick Login:</p>
-          <div className="demo-buttons">
-            <button
-              type="button"
-              className="demo-btn admin-demo"
-              onClick={() => handleDemoLogin("admin")}
-              disabled={loading}
-            >
-              Use test2@gmail.com
-            </button>
-          </div>
-        </div>
 
         <div className="login-footer">
           <p>

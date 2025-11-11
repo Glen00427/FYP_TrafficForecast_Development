@@ -1,7 +1,14 @@
 import React from "react";
 import StatCard from "./StatCard";
 
-function HomeTab({ stats }) {
+function HomeTab({ stats, users, incidents }) {
+  // Add debug info to see what's being passed
+  console.log("🏠 HomeTab received:", {
+    stats,
+    usersCount: users?.length,
+    incidentsCount: incidents?.length,
+  });
+
   return (
     <div className="home-tab">
       {/* Stats Overview card*/}

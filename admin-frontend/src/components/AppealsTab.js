@@ -4,7 +4,7 @@ import ApproveAppealModal from "./ApproveAppealModal";
 import RejectAppealModal from "./RejectAppealModal";
 import RetractConfirmationModal from "./RetractConfirmationModal";
 
-function AppealsTab({ onLogAction }) {
+function AppealsTab({ onLogAction, currentUser }) {
   const [appeals, setAppeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedAppeal, setSelectedAppeal] = useState(null);
@@ -14,7 +14,9 @@ function AppealsTab({ onLogAction }) {
   const [filter, setFilter] = useState("pending");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const mockAdminId = 5;
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [appealsPerPage] = useState(5);
 
   // Fetch appeals from database
   const fetchAppeals = async () => {
@@ -36,7 +38,8 @@ function AppealsTab({ onLogAction }) {
           created_at,
           updated_at,
           users:user_id (userid, name, email, status),
-          incidents:incident_id (id, location, incidentType, severity, description, status)
+          incidents:incident_id (id, location, incidentType, severity, description, status),
+          admin_responder:responded_by (userid, name, role)
         `
         )
         .order("created_at", { ascending: false });
@@ -51,7 +54,7 @@ function AppealsTab({ onLogAction }) {
             : "Incident Rejection Appeal",
         appealType: appeal.appeal_type,
         from: appeal.users?.name || `User ${appeal.user_id}`,
-        submitted: new Date(appeal.created_at).toLocaleDateString("en-US", {
+        submitted: new Date(appeal.updated_at).toLocaleDateString("en-US", {
           year: "numeric",
           month: "short",
           day: "numeric",
@@ -62,6 +65,13 @@ function AppealsTab({ onLogAction }) {
         status: appeal.status,
         admin_response: appeal.admin_response,
         responded_by: appeal.responded_by,
+        admin_responder: appeal.admin_responder
+          ? {
+              id: appeal.admin_responder.userid,
+              name: appeal.admin_responder.name,
+              role: appeal.admin_responder.role,
+            }
+          : null,
         appealData: appeal,
         incidentContext: appeal.incidents
           ? {
@@ -94,6 +104,11 @@ function AppealsTab({ onLogAction }) {
     fetchAppeals();
   }, []);
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, typeFilter]);
+
   const handleApprove = (appeal) => {
     setSelectedAppeal(appeal);
     setShowApproveModal(true);
@@ -113,13 +128,15 @@ function AppealsTab({ onLogAction }) {
     if (!selectedAppeal) return;
 
     try {
+      const currentTimestamp = new Date().toISOString();
+
       const { error: appealError } = await supabase
         .from("appeals")
         .update({
           status: "pending",
           admin_response: null,
           responded_by: null,
-          updated_at: new Date().toISOString(),
+          updated_at: currentTimestamp,
         })
         .eq("appeals_id", selectedAppeal.id);
 
@@ -141,7 +158,6 @@ function AppealsTab({ onLogAction }) {
 
         if (userError) throw userError;
 
-        // Audit log
         await onLogAction(
           "appeal_retract",
           `Retracted ban appeal decision for user: ${selectedAppeal.from}`,
@@ -164,7 +180,6 @@ function AppealsTab({ onLogAction }) {
 
         if (incidentError) throw incidentError;
 
-        // Audit log
         await onLogAction(
           "appeal_retract",
           `Retracted incident appeal decision for incident #${appealData.incident_id}`,
@@ -184,17 +199,18 @@ function AppealsTab({ onLogAction }) {
   };
 
   const handleApproveAppeal = async (response) => {
-    if (!selectedAppeal) return;
+    if (!selectedAppeal || !currentUser) return;
 
     try {
-      // Update appeal status
+      const currentTimestamp = new Date().toISOString();
+
       const { error: appealError } = await supabase
         .from("appeals")
         .update({
           status: "approved",
           admin_response: response,
-          responded_by: mockAdminId,
-          updated_at: new Date().toISOString(),
+          responded_by: currentUser.userid,
+          updated_at: currentTimestamp,
         })
         .eq("appeals_id", selectedAppeal.id);
 
@@ -213,11 +229,10 @@ function AppealsTab({ onLogAction }) {
 
         if (userError) throw userError;
 
-        // Audit log
         await onLogAction(
           "appeal_approve",
           `Approved ban appeal for user: ${selectedAppeal.from}`,
-          `Response: ${response} | User unbanned`,
+          `Response: ${response} | User unbanned | Approved by: ${currentUser.name} (${currentUser.role})`,
           appealData.user_id,
           null
         );
@@ -235,11 +250,10 @@ function AppealsTab({ onLogAction }) {
 
         if (incidentError) throw incidentError;
 
-        // Audit log
         await onLogAction(
           "appeal_approve",
           `Approved incident appeal #${appealData.incident_id} for user: ${selectedAppeal.from}`,
-          `Response: ${response} | Incident re-approved`,
+          `Response: ${response} | Incident re-approved | Approved by: ${currentUser.name} (${currentUser.role})`,
           appealData.user_id,
           appealData.incident_id
         );
@@ -255,16 +269,18 @@ function AppealsTab({ onLogAction }) {
   };
 
   const handleRejectAppeal = async (reason) => {
-    if (!selectedAppeal) return;
+    if (!selectedAppeal || !currentUser) return;
 
     try {
+      const currentTimestamp = new Date().toISOString();
+
       const { error } = await supabase
         .from("appeals")
         .update({
           status: "rejected",
           admin_response: reason,
-          responded_by: mockAdminId,
-          updated_at: new Date().toISOString(),
+          responded_by: currentUser.userid,
+          updated_at: currentTimestamp,
         })
         .eq("appeals_id", selectedAppeal.id);
 
@@ -274,11 +290,10 @@ function AppealsTab({ onLogAction }) {
       const appealType =
         appealData.appeal_type === "ban_appeal" ? "ban" : "incident";
 
-      // Audit log
       await onLogAction(
         "appeal_reject",
         `Rejected ${appealType} appeal from: ${selectedAppeal.from}`,
-        `Reason: ${reason}`,
+        `Reason: ${reason} | Rejected by: ${currentUser.name} (${currentUser.role})`,
         appealData.user_id,
         appealData.incident_id || null
       );
@@ -297,20 +312,78 @@ function AppealsTab({ onLogAction }) {
     const statusMatch =
       filter === "all" ||
       (filter === "pending" && appeal.status === "pending") ||
-      (filter === "resolved" &&
-        (appeal.status === "approved" || appeal.status === "rejected"));
+      (filter === "approved" && appeal.status === "approved") ||
+      (filter === "rejected" && appeal.status === "rejected");
 
     const typeMatch =
-      typeFilter === "all" || appeal.appealType === `${typeFilter}_appeal`;
+      typeFilter === "all" ||
+      (typeFilter === "ban" && appeal.appealType === "ban_appeal") ||
+      (typeFilter === "incident" &&
+        appeal.appealType === "incident_rejection_appeal");
 
     return statusMatch && typeMatch;
   });
 
+  // Pagination logic - matching UsersTab
+  const indexOfLastAppeal = currentPage * appealsPerPage;
+  const indexOfFirstAppeal = indexOfLastAppeal - appealsPerPage;
+  const currentAppeals = filteredAppeals.slice(
+    indexOfFirstAppeal,
+    indexOfLastAppeal
+  );
+  const totalPages = Math.ceil(filteredAppeals.length / appealsPerPage);
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Generate page numbers for pagination - matching UsersTab
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxPagesToShow = 3;
+
+    if (totalPages <= maxPagesToShow + 2) {
+      // Show all pages if total pages are small
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Show first page, current page range, and last page
+      if (currentPage <= maxPagesToShow) {
+        for (let i = 1; i <= maxPagesToShow; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push("...");
+        pageNumbers.push(totalPages);
+      } else if (currentPage >= totalPages - maxPagesToShow + 1) {
+        pageNumbers.push(1);
+        pageNumbers.push("...");
+        for (let i = totalPages - maxPagesToShow + 1; i <= totalPages; i++) {
+          pageNumbers.push(i);
+        }
+      } else {
+        pageNumbers.push(1);
+        pageNumbers.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push("...");
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
+
   const pendingCount = appeals.filter((a) => a.status === "pending").length;
-  const resolvedCount = appeals.filter(
-    (a) => a.status === "approved" || a.status === "rejected"
-  ).length;
+  const approvedCount = appeals.filter((a) => a.status === "approved").length;
+  const rejectedCount = appeals.filter((a) => a.status === "rejected").length;
   const totalCount = appeals.length;
+  const banAppealsCount = appeals.filter(
+    (a) => a.appealType === "ban_appeal"
+  ).length;
+  const incidentAppealsCount = appeals.filter(
+    (a) => a.appealType === "incident_rejection_appeal"
+  ).length;
 
   if (loading) {
     return (
@@ -334,10 +407,16 @@ function AppealsTab({ onLogAction }) {
               Pending ({pendingCount})
             </button>
             <button
-              className={filter === "resolved" ? "active" : ""}
-              onClick={() => setFilter("resolved")}
+              className={filter === "approved" ? "active" : ""}
+              onClick={() => setFilter("approved")}
             >
-              Resolved ({resolvedCount})
+              Approved ({approvedCount})
+            </button>
+            <button
+              className={filter === "rejected" ? "active" : ""}
+              onClick={() => setFilter("rejected")}
+            >
+              Rejected ({rejectedCount})
             </button>
             <button
               className={filter === "all" ? "active" : ""}
@@ -356,24 +435,26 @@ function AppealsTab({ onLogAction }) {
               onChange={(e) => setTypeFilter(e.target.value)}
               className="type-dropdown"
             >
-              <option value="all">All Appeal Types</option>
-              <option value="ban">Ban Appeals</option>
-              <option value="incident">Incident Appeals</option>
+              <option value="all">All Appeal Types ({totalCount})</option>
+              <option value="ban">Ban Appeals ({banAppealsCount})</option>
+              <option value="incident">
+                Incident Appeals ({incidentAppealsCount})
+              </option>
             </select>
           </div>
         </div>
       </div>
 
       <div className="appeals-list">
-        {filteredAppeals.length > 0 ? (
-          filteredAppeals.map((appeal) => (
+        {currentAppeals.length > 0 ? (
+          currentAppeals.map((appeal) => (
             <AppealCard
               key={appeal.id}
               appeal={appeal}
               onApprove={handleApprove}
               onReject={handleReject}
               onRetract={handleRetractClick}
-              showActions={filter === "pending"}
+              showActions={appeal.status === "pending"}
             />
           ))
         ) : (
@@ -382,6 +463,53 @@ function AppealsTab({ onLogAction }) {
           </div>
         )}
       </div>
+
+      {/* Pagination Controls - Matching UsersTab style */}
+      {filteredAppeals.length > 0 && (
+        <div className="table-footer">
+          <span>
+            Showing {currentAppeals.length} of {filteredAppeals.length} appeals
+          </span>
+          <div className="pagination">
+            {/* Previous button */}
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="pagination-btn"
+            >
+              Previous
+            </button>
+
+            {/* Page numbers */}
+            {getPageNumbers().map((number, index) =>
+              number === "..." ? (
+                <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                  ⋯
+                </span>
+              ) : (
+                <button
+                  key={number}
+                  onClick={() => paginate(number)}
+                  className={`pagination-btn ${
+                    currentPage === number ? "active" : ""
+                  }`}
+                >
+                  {number}
+                </button>
+              )
+            )}
+
+            {/* Next button */}
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="pagination-btn"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       {showApproveModal && (
         <ApproveAppealModal
@@ -460,7 +588,16 @@ function AppealCard({ appeal, onApprove, onReject, onRetract, showActions }) {
           <div className="response-header">
             <strong>
               {appeal.status === "approved" ? "Approved" : "Rejected"}
-              {appeal.responded_by && ` by Admin`}
+              {appeal.admin_responder && (
+                <>
+                  {" "}
+                  by {appeal.admin_responder.name} (
+                  {appeal.admin_responder.role})
+                </>
+              )}
+              {!appeal.admin_responder && appeal.responded_by && (
+                <> by Admin #{appeal.responded_by}</>
+              )}
             </strong>
           </div>
           <p>{appeal.admin_response}</p>

@@ -8,6 +8,10 @@ function AuditLogsTab() {
   const [actionFilter, setActionFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [logsPerPage] = useState(10); // Show 10 logs per page
+
   // Fetch audit logs from database
   const fetchAuditLogs = async () => {
     try {
@@ -96,17 +100,10 @@ function AuditLogsTab() {
 
   // Format action type for display
   const formatActionType = (actionType) => {
-    const actionMap = {
-      user_ban: "User Ban",
-      user_unban: "User Unban",
-      incident_approve: "Incident Approval",
-      incident_reject: "Incident Rejection",
-      bulk_action: "Bulk Action",
-      role_change: "Role Change",
-      appeal_approve: "Appeal Approval",
-      appeal_reject: "Appeal Rejection",
-    };
-    return actionMap[actionType] || actionType;
+    const formatted = actionType
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+    return formatted;
   };
 
   // Filter logs based on search term
@@ -119,6 +116,56 @@ function AuditLogsTab() {
       log.action.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Calculate pagination
+  const indexOfLastLog = currentPage * logsPerPage;
+  const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
+  const totalPages = Math.ceil(filteredLogs.length / logsPerPage);
+
+  // Change page
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxPagesToShow = 3;
+
+    if (totalPages <= maxPagesToShow + 2) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      if (currentPage <= maxPagesToShow) {
+        for (let i = 1; i <= maxPagesToShow; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push("...");
+        pageNumbers.push(totalPages);
+      } else if (currentPage >= totalPages - maxPagesToShow + 1) {
+        pageNumbers.push(1);
+        pageNumbers.push("...");
+        for (let i = totalPages - maxPagesToShow + 1; i <= totalPages; i++) {
+          pageNumbers.push(i);
+        }
+      } else {
+        pageNumbers.push(1);
+        pageNumbers.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push("...");
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [actionFilter, dateFilter, searchTerm]);
+
   if (loading) {
     return (
       <div className="audit-logs-loading">
@@ -130,13 +177,6 @@ function AuditLogsTab() {
 
   return (
     <div className="audit-logs-container">
-      <div className="audit-logs-header">
-        <h2>Audit Logs</h2>
-        <p className="audit-logs-subtitle">
-          Track all administrative actions and changes
-        </p>
-      </div>
-
       <div className="audit-logs-controls">
         <div className="audit-logs-search">
           <input
@@ -178,15 +218,9 @@ function AuditLogsTab() {
         </div>
       </div>
 
-      <div className="audit-logs-info">
-        <p className="audit-logs-count">
-          Showing {filteredLogs.length} of {logs.length} audit log entries
-        </p>
-      </div>
-
       <div className="audit-logs-list">
-        {filteredLogs.length > 0 ? (
-          filteredLogs.map((log) => (
+        {currentLogs.length > 0 ? (
+          currentLogs.map((log) => (
             <div key={log.id} className="audit-log-entry">
               <div className="audit-log-header">
                 <span className="audit-log-action">
@@ -227,6 +261,51 @@ function AuditLogsTab() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {filteredLogs.length > logsPerPage && (
+        <div className="table-footer">
+          <span>
+            Showing {currentLogs.length} of {filteredLogs.length} audit log
+            entries
+          </span>
+          <div className="pagination">
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="pagination-btn"
+            >
+              Previous
+            </button>
+
+            {getPageNumbers().map((number, index) =>
+              number === "..." ? (
+                <span key={`ellipsis-${index}`} className="pagination-ellipsis">
+                  ⋯
+                </span>
+              ) : (
+                <button
+                  key={number}
+                  onClick={() => paginate(number)}
+                  className={`pagination-btn ${
+                    currentPage === number ? "active" : ""
+                  }`}
+                >
+                  {number}
+                </button>
+              )
+            )}
+
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="pagination-btn"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
