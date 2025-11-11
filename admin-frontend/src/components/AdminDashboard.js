@@ -367,21 +367,28 @@ export default function AdminDashboard({ user, onLogout }) {
         <div className="header-left">
           <h1>Admin Dashboard</h1>
           <div className="user-info">
-            Welcome, <strong>{user?.name}</strong> ({user?.role})
+            Welcome, <strong>{user?.name || "Admin"}</strong> ({user?.role || "admin"})
           </div>
         </div>
-        <div className="header-info">
-          <button onClick={handleManualRefresh} className="btn-outline">
-            Refresh Data
-          </button>
-          <button onClick={onLogout} className="btn-outline logout-btn">
-            Logout
-          </button>
-          <div className="last-updated">
-            Last updated: {lastUpdated.toLocaleTimeString()}
+
+        <div className="header-right">
+          <div className="header-top">
+            <div className="last-updated">
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </div>
+            {debugInfo && <div className="status-box">{debugInfo}</div>}
           </div>
+
+          <div className="header-buttons">
+            <button onClick={handleManualRefresh} className="header-btn">
+              Refresh Data
+            </button>
+            <button onClick={onLogout} className="header-btn logout">
+              Logout
+            </button>
+          </div>
+
           {loading && <span className="loading">Loading...</span>}
-          {debugInfo && <div className="debug-info">{debugInfo}</div>}
         </div>
       </header>
 
