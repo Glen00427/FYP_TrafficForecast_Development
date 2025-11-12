@@ -320,6 +320,18 @@ export default function App() {
               prefillValues={routePrefill}
               onPrefillConsumed={() => setRoutePrefill(null)}
               onSubmit={async (from, to, options) => {
+                if (!from || !from.trim()) {
+                  alert("Please enter a starting location");
+                  return;
+                }
+                if (!to || !to.trim()) {
+                  alert("Please enter a destination");
+                  return;
+                }
+                if (from.trim().toLowerCase() === to.trim().toLowerCase()) {
+                  alert("Origin and destination cannot be the same");
+                  return;
+                }
                 try {
                   const result = await predictRoutes({
                     from,
@@ -335,6 +347,35 @@ export default function App() {
                 } catch (error) {
                   console.error("Prediction failed:", error);
                   alert("Could not get predictions. Check console.");
+                }
+              }}
+              onNavigate={async (originLabel, destinationLabel, options) => {
+                const from = String(originLabel || "").trim();
+                const to = String(destinationLabel || "").trim();
+                if (!from) {
+                  alert("Current location unavailable. Please allow access and try again.");
+                  return;
+                }
+                if (!to) {
+                  alert("Please enter a destination");
+                  return;
+                }
+                try {
+                  const result = await predictRoutes({
+                    from,
+                    to,
+                    departTime: options?.departAt,
+                  });
+                  console.log("Navigation predictions received:", result);
+                  result.from = from;
+                  result.to = to;
+                  if (options?.originCoords) result.originCoords = options.originCoords;
+                  setPredictionResult(result);
+                  setShowingRoute(false);
+                  setDisplayedPrediction(null);
+                } catch (error) {
+                  console.error("Navigation prediction failed:", error);
+                  alert("Could not start navigation. Check console.");
                 }
               }}
             />
@@ -373,6 +414,32 @@ export default function App() {
             onClose={() => setActivePage("live")}
           />
         </section>
+
+        {/* ✅ Prediction Dialog (restored) */}
+        {predictionResult && (
+          <PredictionDialog
+            result={predictionResult}
+            onClose={() => {
+              setPredictionResult(null);
+              setShowingRoute(false);
+              setDisplayedPrediction(null);
+            }}
+            onShowRoute={() => {
+              if (predictionResult?.best?.route_coordinates) {
+                setRoute({ geometry: predictionResult.best.route_coordinates });
+                setShowingRoute(true);
+                setDisplayedPrediction(predictionResult);
+                setPredictionResult(null);
+                setActivePage("live");
+                const closeButton = document.querySelector(".rps-close");
+                if (closeButton) closeButton.click();
+              } else {
+                alert("Route coordinates not available");
+              }
+            }}
+            user={user}
+          />
+        )}
       </div>
     </div>
   );
