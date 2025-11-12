@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import LoginPage from "./components/LoginPage";
 import AdminDashboard from "./components/AdminDashboard";
 import { supabase } from "./lib/supabaseClient";
-import "./App.css"; // Now this file exists
+import "./App.css"; 
 
 function App() {
   const [user, setUser] = useState(null);
