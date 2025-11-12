@@ -210,18 +210,6 @@ export default function RoutePreviewSheet({
     return collapse();
   }
 
-  // ---------- demo cards ----------
-  const preview = useMemo(
-    () => ({
-      time: "30 min",
-      distance: "15 km",
-      traffic: "Moderate traffic expected",
-      placeTitle: "Our Tampines Hub",
-      placeDesc: "Moderate traffic expected, currently evening peak hours",
-    }),
-    []
-  );
-
   const reverseGeocode = useCallback(async ({ lat, lng }) => {
     try {
       const res = await fetch(
@@ -517,27 +505,6 @@ export default function RoutePreviewSheet({
                   Start Navigation
                 </button>
               </form>
-            </div>
-
-            <div className="rps-subtitle">Location Search</div>
-            <div className="rps-search-input rps-search-input--pill">
-              <span className="rps-search-ico">🔎</span>
-              <input
-                className="rps-input-ghost"
-                placeholder="Search location for traffic conditions…"
-                defaultValue={preview.placeTitle}
-              />
-            </div>
-
-            <div className="rps-location-card rps-card">
-              <div className="rps-location-title">{preview.placeTitle}</div>
-              <div className="rps-alert rps-alert--amber rps-alert--light">
-                <span className="rps-alert-ico">🚌</span>
-                <div>
-                  <div className="rps-alert-title">Traffic Conditions</div>
-                  <div className="rps-alert-text">{preview.placeDesc}</div>
-                </div>
-              </div>
             </div>
           </>
         )}

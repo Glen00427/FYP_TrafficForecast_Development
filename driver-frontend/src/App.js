@@ -236,7 +236,7 @@ export default function App() {
 
   // ===== NORMAL APP =====
   return (
-    <div className="phone-wrapper">
+    <div>
       <div className="app" data-theme={theme}>
         <SideMenu
           open={menuOpen}
@@ -247,6 +247,16 @@ export default function App() {
           onCreateAccount={() => setAccountOpen(true)}
           onSignIn={() => setSignInOpen(true)}
           onLogout={handleLogout}
+        />
+
+      {/* 🧩 Sign In modal */}
+        <UserSignInForm
+          open={signInOpen}
+          onClose={() => setSignInOpen(false)}
+          onSuccess={(userInfo) => {
+            setUser(userInfo);
+            setSignInOpen(false);
+          }}
         />
 
         {/* LIVE MAP PAGE */}

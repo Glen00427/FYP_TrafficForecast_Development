@@ -107,10 +107,10 @@ function LoginPage({ onLogin }) {
             {loading ? (
               <>
                 <div className="spinner"></div>
-                Signing In...
+                Logging In...
               </>
             ) : (
-              "Sign In"
+              "Log In"
             )}
           </button>
         </form>
@@ -127,3 +127,4 @@ function LoginPage({ onLogin }) {
 }
 
 export default LoginPage;
+
