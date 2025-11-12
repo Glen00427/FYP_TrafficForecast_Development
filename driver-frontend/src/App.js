@@ -249,6 +249,16 @@ export default function App() {
           onLogout={handleLogout}
         />
 
+      {/* 🧩 Sign In modal */}
+        <UserSignInForm
+          open={signInOpen}
+          onClose={() => setSignInOpen(false)}
+          onSuccess={(userInfo) => {
+            setUser(userInfo);
+            setSignInOpen(false);
+          }}
+        />
+
         {/* LIVE MAP PAGE */}
         <section
           className={`page page-live ${activePage === "live" ? "is-active" : ""}`}
