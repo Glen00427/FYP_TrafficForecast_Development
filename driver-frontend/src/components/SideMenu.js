@@ -216,7 +216,7 @@ export default function SideMenu({
               </button>
 
               <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock">
-                <span className="sm-nav-ico">⚙️</span> Settings <span className="sm-lock">��</span>
+                <span className="sm-nav-ico">⚙️</span> Settings <span className="sm-lock">🔒</span>
               </button>
 
               <button className="sm-nav-item is-locked" onClick={nudgeToAuth} title="Register to unlock">
