@@ -236,7 +236,7 @@ export default function App() {
 
   // ===== NORMAL APP =====
   return (
-    <div className="phone-wrapper">
+    <div>
       <div className="app" data-theme={theme}>
         <SideMenu
           open={menuOpen}
