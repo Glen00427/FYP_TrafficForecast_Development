@@ -349,6 +349,13 @@ export default function RoutePreviewSheet({
           <h3 className="rps-h-title">{title}</h3>
           <button className="rps-close" aria-label="Close" onClick={collapse}>✕</button>
         </div>
+        <div className="rps-header">
+          <div className="rps-h-group">
+            <span className="rps-h-ico" aria-hidden>{headerIcon}</span>
+            <h3 className="rps-h-title">{title}</h3>
+          </div>
+          <button className="rps-close" aria-label="Close" onClick={collapse}>✕</button>
+        </div>
       ) : (
         <>
           <div
