@@ -3697,19 +3697,6 @@ button:not(:disabled):active {
   padding-bottom: max(10px, env(safe-area-inset-bottom));
 }
 
-.rps-close {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%); /* perfectly centers vertically */
-  border: 0;
-  background: transparent;
-  font-size: 24px;
-  line-height: 1;
-  color: #111827;
-  cursor: pointer;
-}
-
 .rps-close:focus-visible {
   outline: 2px solid #2563eb;
   border-radius: 6px;
