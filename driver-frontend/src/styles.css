@@ -3733,11 +3733,17 @@ button:not(:disabled):active {
 
 /* Header (icon + title + close) */
 .rps-header {
+  display: flex;
+  align-items: center;            
+  justify-content: space-between; 
+  padding: 80px 16px 8px;          
   position: relative;
+}
+
+.rps-h-group {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 80px 16px 8px;
 }
 
 .rps-h-ico {
@@ -3753,9 +3759,6 @@ button:not(:disabled):active {
 }
 
 .rps-close {
-  position: absolute;
-  right: 16px;
-  bottom: 6px;
   border: 0;
   background: transparent;
   font-size: 24px;
