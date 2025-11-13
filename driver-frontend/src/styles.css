@@ -3734,7 +3734,6 @@ button:not(:disabled):active {
 /* Header (icon + title + close) */
 .rps-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   width: 100%;
   padding: 0.75rem 1rem;
@@ -3749,7 +3748,6 @@ button:not(:disabled):active {
 
 .rps-h-title {
   flex: 1;
-  text-align: center;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
