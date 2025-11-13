@@ -196,14 +196,14 @@ export default function IncidentReportForm({
           <button type="button" className="rif-gps-btn" onClick={handleUseGPS}>
             📍 Use GPS
           </button>
-        
+        </div>
+              
         <input
           className="rif-input rif-input--full"
           placeholder="Full address (optional)"
           value={fullAddress}
           onChange={(e) => setFullAddress(e.target.value)}
         />
-        </div>
 
         {/* Description */}
         <label className="rif-label">Description</label>
