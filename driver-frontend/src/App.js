@@ -277,7 +277,6 @@ export default function App() {
 
             <div className="map-overlays-tl">
               <FloatingMenuButton onOpenMenu={openMenu} />
-              {!!user && <NotificationIcon onClick={() => setNotifOpen(true)} />}
             </div>
 
             <FloatingThemeToggle theme={theme} onToggle={toggleTheme} />
@@ -309,19 +308,6 @@ export default function App() {
               autoCloseMs={1800}
             />
 
-            {/* Live Notifications */}
-            <LiveNotifications
-              open={notifOpen}
-              onClose={() => setNotifOpen(false)}
-              items={[
-                {
-                  id: "n1",
-                  when: "10 min ago",
-                  title: "Severe Traffic incident on KPE",
-                  desc: "Severe collision involving 5 vehicles.",
-                },
-              ]}
-            />
 
             {/* Route Preview + Prediction */}
             <RoutePreviewSheet
