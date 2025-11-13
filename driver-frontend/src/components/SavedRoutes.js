@@ -265,9 +265,6 @@ export default function SavedRoutes({
                     <button className="sr-btn sr-btn-ghost" onClick={() => onNavigate?.(r)}>
                       ✈️ Navigate
                     </button>
-                    <button className="sr-btn sr-btn-primary" onClick={() => onStartTrip?.(r)}>
-                      Start Trip
-                    </button>
                   </div>
                 </article>
               ))}
