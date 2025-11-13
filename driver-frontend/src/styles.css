@@ -3737,6 +3737,7 @@ button:not(:disabled):active {
   justify-content: space-between;
   width: 100%;
   padding: 0.75rem 1rem;
+  align-items: center;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -3747,11 +3748,10 @@ button:not(:disabled):active {
 }
 
 .rps-h-title {
-  flex: 1;
   margin: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 .rps-close {
