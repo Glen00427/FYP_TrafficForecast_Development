@@ -929,6 +929,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 40px 16px 8px;
 }
 
 .rif-header-left {
