@@ -3728,7 +3728,10 @@ button:not(:disabled):active {
   height: 100vh !important;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
+  padding-top: max(12px, env(safe-area-inset-top));
   padding-bottom: max(12px, env(safe-area-inset-bottom));
+  box-sizing: border-box; 
+  overflow-y: auto; 
 }
 
 /* Header (icon + title + close) */
