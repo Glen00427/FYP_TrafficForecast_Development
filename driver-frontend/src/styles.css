@@ -955,7 +955,6 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  padding: 10px 0px 20px;
 }
 
 .rif-type-btn {
@@ -984,7 +983,6 @@ textarea {
 .rif-row {
   display: flex;
   gap: 8px;
-  padding: 10px 0px 20px;
 }
 
 .rif-input--full {
@@ -994,7 +992,6 @@ textarea {
 .rif-textarea {
   height: 120px;
   resize: vertical;
-  padding: 10px 0px 20px;
 }
 
 .rif-gps-btn {
