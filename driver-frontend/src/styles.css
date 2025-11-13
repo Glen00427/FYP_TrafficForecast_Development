@@ -28,7 +28,7 @@ body,
 
 .phone-wrapper {
   width: 100%;
-  max-width: 430px;
+  max-width: 100%;
   flex: 1 1 auto;    
   margin: 0 auto;
   display: flex;
