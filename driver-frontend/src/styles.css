@@ -3073,13 +3073,8 @@ button:not(:disabled):active {
 }
 
 .rpf-close {
-  position: absolute;
-  top: 14px;
-  right: 16px;
   background: transparent;
   border: 0;
-  font-size: 24px;
-  color: #6b7280;
   cursor: pointer;
 }
 
