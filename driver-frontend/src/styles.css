@@ -3740,7 +3740,7 @@ button:not(:disabled):active {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 24px 16px 8px;
+  padding: 40px 16px 8px;
 }
 
 .rps-h-ico {
