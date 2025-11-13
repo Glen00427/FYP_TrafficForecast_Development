@@ -929,7 +929,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 70px 16px 8px;
+  padding: 70px 10px 20px;
 }
 
 .rif-header-left {
@@ -955,6 +955,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
+  padding: 10px 10px 20px;
 }
 
 .rif-type-btn {
