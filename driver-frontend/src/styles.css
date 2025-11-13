@@ -3733,11 +3733,13 @@ button:not(:disabled):active {
 
 /* Header (icon + title + close) */
 .rps-header {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px 8px;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .rps-h-ico {
@@ -3746,10 +3748,12 @@ button:not(:disabled):active {
 }
 
 .rps-h-title {
+  flex: 1;
+  text-align: center;
   margin: 0;
-  font-size: 28px;
-  font-weight: 900;
-  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rps-close {
