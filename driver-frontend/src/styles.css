@@ -21,14 +21,19 @@ body,
 
 .phone-wrapper {
   width: 100%;
-  max-width: 430px; 
-  height: 100vh;
+  max-width: 430px;
+  height: 100dvh;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   background: #fff;
+
+  padding-top: calc(env(safe-area-inset-top, 0) + 10px);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
 }
 
 :root {
