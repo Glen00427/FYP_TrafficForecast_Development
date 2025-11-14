@@ -2642,6 +2642,7 @@ button:not(:disabled):active {
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
+  padding: 40px 0px 15px;
 }
 
 .cam-title,
