@@ -59,7 +59,7 @@ export default function SavedRoutes({
 
     const { data, error } = await supabase
       .from("savedRoutes")
-      .select("id, user_id, origin, destination, duration, distance, created_at")
+      .select("id, user_id, origin, destination, duration, distance, created_at, favorite")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
 
@@ -80,7 +80,7 @@ export default function SavedRoutes({
       date: r.created_at
         ? new Date(`${r.created_at}T00:00:00`).toISOString()
         : new Date().toISOString(),
-      favorite: false,
+      favorite: r.favorite ?? false,
       recurring: false,
     }));
 
@@ -115,8 +115,30 @@ export default function SavedRoutes({
   }, []);
 
   // client-only toggles
-  const toggleFav = (r) =>
-    setRoutes((list) => list.map((x) => (x.id === r.id ? { ...x, favorite: !x.favorite } : x)));
+  const toggleFav = async (r) => {
+    const newValue = !r.favorite;
+  
+    // Optimistic UI update
+    setRoutes((list) =>
+      list.map((x) => (x.id === r.id ? { ...x, favorite: newValue } : x))
+    );
+  
+    // Persist to DB
+    const { error } = await supabase
+      .from("savedRoutes")
+      .update({ favorite: newValue })
+      .eq("id", r.id);
+  
+    if (error) {
+      alert("Failed to update favourite");
+      console.error(error);
+  
+      // revert if fail
+      setRoutes((list) =>
+        list.map((x) => (x.id === r.id ? { ...x, favorite: !newValue } : x))
+      );
+    }
+  };
 
   const toggleRecurring = (r) =>
     setRoutes((list) => list.map((x) => (x.id === r.id ? { ...x, recurring: !x.recurring } : x)));
