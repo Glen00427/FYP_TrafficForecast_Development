@@ -79,13 +79,13 @@ export default function CreateUserAccount({
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <div className={cardClass} onClick={(e) => e.stopPropagation()}>
-        <button className="cam-close" aria-label="Close" onClick={onClose}>
-          ✕
-        </button>
 
         <div className="cam-header">
           <span className="cam-h-ico">👤➕</span>
           <h3 className="cam-title">Create Your Account</h3>
+          <button className="cam-close" aria-label="Close" onClick={onClose}>
+            ✕
+          </button>
         </div>
 
         <form className="cam-form" onSubmit={handleSubmit}>
