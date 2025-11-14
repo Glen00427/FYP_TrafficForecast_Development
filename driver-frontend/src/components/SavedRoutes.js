@@ -204,26 +204,8 @@ export default function SavedRoutes({
               <button className={`sr-chip ${filter === "fav" ? "active" : ""}`} onClick={() => setFilter("fav")}>
                 Favourites
               </button>
-              <button className={`sr-chip ${filter === "rec" ? "active" : ""}`} onClick={() => setFilter("rec")}>
-                Recurring
-              </button>
               <button className={`sr-chip ${filter === "recent" ? "active" : ""}`} onClick={() => setFilter("recent")}>
                 Recent
-              </button>
-              <button
-                type="button"
-                className="sr-add-btn"
-                title="Add a saved route"
-                aria-label="Add a saved route"
-                onClick={() => {
-                  if (onAddRoute) {
-                    onAddRoute();
-                  } else {
-                    setAddOpen(true);
-                  }
-                }}
-              >
-                +
               </button>
             </div>
           </div>
@@ -245,9 +227,6 @@ export default function SavedRoutes({
                     <div className="sr-route-head-actions">
                       <button className="sr-icon-btn" title="Toggle favourite" onClick={() => toggleFav(r)}>
                         {r.favorite ? "⭐" : "☆"}
-                      </button>
-                      <button className="sr-icon-btn" title="Toggle recurring" onClick={() => toggleRecurring(r)}>
-                        🔁
                       </button>
                       <button className="sr-icon-btn" title="Delete" onClick={() => doDelete(r)}>
                         🗑️
@@ -280,7 +259,6 @@ export default function SavedRoutes({
             <h3 className="sr-card-title">📈 Route Statistics</h3>
             <div className="sr-kv"><span>Total Routes</span><strong>{routes.length}</strong></div>
             <div className="sr-kv"><span>Favourites</span><strong>{routes.filter((r) => r.favorite).length}</strong></div>
-            <div className="sr-kv"><span>Recurring</span><strong>{routes.filter((r) => r.recurring).length}</strong></div>
             <div className="sr-kv">
               <span>Avg. Distance</span>
               <strong>
@@ -313,10 +291,6 @@ export default function SavedRoutes({
             <div className="sr-kv-sm"><span>Total Trips</span><strong>{routes.length} routes planned</strong></div>
           </div>
 
-          <div className="sr-card">
-            <h3 className="sr-card-title">🗓️ Recurring Commutes</h3>
-            <div className="sr-muted">No recurring commutes set up.</div>
-          </div>
         </aside>
       </div>
 
