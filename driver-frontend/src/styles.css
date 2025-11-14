@@ -2640,9 +2640,15 @@ button:not(:disabled):active {
 .usf-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  justify-content: space-between;
   padding: 40px 0px 15px;
+  position: relative;
+}
+
+.cam-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .cam-title,
@@ -2670,13 +2676,9 @@ button:not(:disabled):active {
 
 .cam-close,
 .usf-close {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   border: 0;
   background: transparent;
   font-size: 18px;
-  /* or 20px if you prefer bigger */
   color: #6b7280;
   cursor: pointer;
 }
