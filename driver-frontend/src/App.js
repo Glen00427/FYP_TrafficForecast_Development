@@ -176,26 +176,24 @@ export default function App() {
     bumpMap();
   }
 
-  async function handleCreateAccount({ name, email, phone, password }) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { name, phone },
-        },
-      });
-
-      if (error) throw error;
-
-      setCreateAccountSuccess(true);
+    async function handleCreateAccount({ name, email, phone, password }) {
+      const emailNorm = (email ?? "").trim().toLowerCase();
+  
+      const { error } = await supabase
+        .from("users")
+        .insert([{ name, email: emailNorm, phone, password }])
+        .select()
+        .single();
+  
+      if (error) {
+        console.error(error);
+        alert(`Create failed: ${error.message}`);
+        return;
+      }
+  
       setAccountOpen(false);
-
-    } catch (err) {
-      console.error("Sign-up failed:", err);
-      alert(err.message || "Failed to create account");
+      setCreateAccountSuccess(true);
     }
-  }
   
   // ===== EARLY RETURNS =====
   if (gateBlocking && signupFlowOpen) {
