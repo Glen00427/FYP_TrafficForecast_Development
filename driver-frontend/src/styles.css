@@ -2636,8 +2636,7 @@ button:not(:disabled):active {
 }
 
 /* Header layout (icon + title) */
-.cam-header,
-.usf-header {
+.cam-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2645,6 +2644,12 @@ button:not(:disabled):active {
   position: relative;
 }
 
+.usf-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
 .cam-header-left {
   display: flex;
   align-items: center;
