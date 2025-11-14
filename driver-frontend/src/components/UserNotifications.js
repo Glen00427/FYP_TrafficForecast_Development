@@ -88,13 +88,6 @@ export default function NotificationsSettings({
               on={congestion}
               setOn={setCongestion}
             />
-            <Item
-              icon="↩️"
-              title="Auto Re-routing"
-              desc="Automatically find alternative routes"
-              on={reroute}
-              setOn={setReroute}
-            />
           </Section>
 
           {/* Section: Audio */}
@@ -105,13 +98,6 @@ export default function NotificationsSettings({
               desc="Sound notifications for incidents"
               on={audioAlerts}
               setOn={setAudioAlerts}
-            />
-            <Item
-              icon="🎙️"
-              title="Voice Navigation"
-              desc="Spoken turn-by-turn directions"
-              on={voiceNav}
-              setOn={setVoiceNav}
             />
 
             <div className="nsm-field">
