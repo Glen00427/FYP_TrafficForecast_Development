@@ -43,7 +43,7 @@ export default function CreateUserLearnMore({
           <li className="culm-item">
             <span className="culm-ico">🚗</span>
             <span className="culm-text">
-              Core Navigation & Travel Time Estimation
+              Navigation & Travel Time Estimation
             </span>
           </li>
           <li className="culm-item">
